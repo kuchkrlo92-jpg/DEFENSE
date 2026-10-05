@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Tower Defense</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="game-root" class="game-wrapper">
+
+    <!-- Orientation reminder for landscape mobile -->
+    <div id="landscape-rotate-prompt" class="landscape-rotate-prompt">
+      <div class="rotate-device-icon">📱</div>
+      <div class="rotate-title">PLEASE ROTATE YOUR DEVICE</div>
+      <div class="rotate-subtitle">PORTRAIT MODE</div>
+    </div>
+
+    <!-- Error Fallback display -->
+    <div id="fatal-error-overlay" class="hidden error-overlay">
+      <div class="error-box">
+        <h3>Game Notice</h3>
+        <p id="fatal-error-msg">Loading game assets...</p>
+        <button onclick="location.reload()" class="btn-secondary" style="margin-top:10px;padding:8px 16px;">Reload</button>
+      </div>
+    </div>
+
+    <!-- MAIN MENU SCREEN -->
+    <div id="main-menu" class="screen active">
+      <!-- Static fantasy stone background styled via CSS -->
+      <div class="menu-content-layer">
+        <div class="menu-top-bar">
+          <div class="player-profile-badge" id="btn-open-profile" title="Player Profile">
+            <div class="avatar-frame">
+              <img id="menu-avatar-img" src="" alt="Avatar" class="avatar-img hidden" />
+              <div id="menu-avatar-fallback" class="avatar-fallback">👤</div>
+            </div>
+            <div class="player-info">
+              <span id="menu-player-name" class="player-name">Your Player</span>
+            </div>
+          </div>
+          <div class="currency-badge">
+            <span class="currency-icon">💰</span>
+            <span id="menu-money-display" class="currency-amount">Rs 0</span>
+          </div>
+        </div>
+
+        <div class="menu-hero">
+          <div class="game-logo">
+            <div class="logo-shield">🏰</div>
+            <h1 class="logo-title">SIEGE DEFENSE</h1>
+            <p class="logo-subtitle">ENDLESS REALM GUARDIAN</p>
+          </div>
+        </div>
+
+        <div class="menu-actions">
+          <button id="btn-start" class="btn-menu btn-primary">
+            <span class="btn-icon">⚔️</span>
+            <span class="btn-text">START</span>
+          </button>
+          <button id="btn-maps" class="btn-menu btn-secondary">
+            <span class="btn-icon">🗺️</span>
+            <span class="btn-text">MAP</span>
+          </button>
+          <button id="btn-task" class="btn-menu btn-secondary">
+            <span class="btn-icon">📜</span>
+            <span class="btn-text">TASK</span>
+            <span id="task-badge" class="badge hidden">!</span>
+          </button>
+          <button id="btn-challenge" class="btn-menu btn-secondary">
+            <span class="btn-icon">🏆</span>
+            <span class="btn-text">CHALLENGE</span>
+            <span id="challenge-badge" class="badge hidden">!</span>
+          </button>
+          <button id="btn-settings" class="btn-menu btn-secondary">
+            <span class="btn-icon">⚙️</span>
+            <span class="btn-text">SETTINGS</span>
+          </button>
+          <button id="btn-exit" class="btn-menu btn-danger">
+            <span class="btn-icon">🚪</span>
+            <span class="btn-text">EXIT</span>
+          </button>
+        </div>
+        <div class="menu-footer">100% Offline Game • Endless Realm Guardian</div>
+      </div>
+    </div>
+
+    <!-- DEDICATED CHALLENGES SCREEN -->
+    <div id="challenges-screen" class="screen">
+      <div class="challenges-screen-header">
+        <button id="btn-challenges-back" class="btn-back-nav">← BACK</button>
+        <div class="challenges-title-box">
+          <h1 class="challenges-main-title">CHALLENGES</h1>
+          <div id="challenges-count-badge" class="challenges-count-badge">Completed: 0 / 100</div>
+        </div>
+        <div class="challenges-currency-badge">
+          <span>💰</span>
+          <span id="challenges-money-val">Rs 0</span>
+        </div>
+      </div>
+      <div class="challenges-scroll-container">
+        <div id="challenges-grid-list" class="challenges-cards-list">
+          <!-- 100 Challenge Cards dynamically rendered here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- GAMEPLAY SCREEN -->
+    <div id="gameplay-screen" class="screen">
+      <!-- Game Top HUD -->
+      <div id="game-hud">
+        <div class="hud-stat" id="stat-castle">
+          <span class="stat-icon">🏰</span>
+          <span id="hud-castle" class="stat-value">100 / 100</span>
+        </div>
+        <div class="hud-stat" id="stat-money">
+          <span class="stat-icon">💰</span>
+          <span id="hud-money" class="stat-value">Rs 0</span>
+        </div>
+        <div class="hud-stat" id="stat-wave">
+          <span class="stat-icon">🌊</span>
+          <span id="hud-wave" class="stat-value">WAVE 1 / 50</span>
+        </div>
+        <div class="hud-stat" id="stat-kills">
+          <span class="stat-icon">💀</span>
+          <span id="hud-kills" class="stat-value">0</span>
+        </div>
+        <div class="hud-controls">
+          <button id="btn-speed" class="hud-btn" title="Toggle Speed">1x</button>
+          <button id="btn-pause" class="hud-btn" title="Pause Game">⏸️</button>
+          <button id="btn-ingame-menu" class="hud-btn" title="Return to Menu">🚪</button>
+        </div>
+      </div>
+
+      <!-- In-Game Map & Status Sub-HUD -->
+      <div id="game-subhud">
+        <div id="hud-map-badge" class="hud-map-badge">
+          <span class="hud-map-icon">🗺️</span>
+          <span id="hud-map-text">MAP 1 – Grassland</span>
+        </div>
+        <div id="hud-difficulty-badge" class="hud-mode-badge">
+          <span id="hud-difficulty-text">EASY</span>
+        </div>
+      </div>
+
+      <!-- Challenge Active In-Game HUD Panel -->
+      <div id="active-challenge-hud" class="active-challenge-hud hidden">
+        <div class="challenge-hud-row">
+          <span class="challenge-hud-badge">🎯 CHALLENGE</span>
+          <span id="challenge-hud-name" class="challenge-hud-title">SURVIVE 5 WAVES</span>
+        </div>
+        <div class="challenge-hud-progress-row">
+          <span id="challenge-hud-desc" class="challenge-hud-desc">Progress: 0 / 5</span>
+          <span id="challenge-hud-timer" class="challenge-hud-timer hidden">⏱️ 02:00</span>
+        </div>
+      </div>
+
+      <!-- Wave Announcement Banner -->
+      <div id="wave-banner" class="wave-banner hidden">
+        <div id="wave-banner-text" class="wave-banner-title">WAVE 1</div>
+        <div id="wave-banner-sub" class="wave-banner-sub">GET READY!</div>
+      </div>
+
+      <!-- Battle Canvas Area -->
+      <div id="canvas-container">
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Selected Tile Build Banner -->
+        <div id="tile-selection-hint" class="tile-selection-hint hidden">
+          <div class="tile-hint-badge">📍 Selected Tile</div>
+          <span id="tile-selection-text">Tap a tower below to build</span>
+          <button id="btn-cancel-placement" class="btn-cancel-placement" title="Cancel Selection">✕</button>
+        </div>
+      </div>
+
+      <!-- Bottom Build & Control Bar -->
+      <div id="bottom-bar">
+        <div id="wave-control-bar">
+          <div id="prep-timer-box">
+            <span class="prep-label">Next Wave in:</span>
+            <span id="prep-timer-val" class="prep-val">10s</span>
+          </div>
+          <button id="btn-send-wave" class="btn-action-wave">
+            <span>⚔️ START WAVE</span>
+          </button>
+        </div>
+
+        <div id="tower-selector-bar">
+          <div class="tower-card" data-type="archer">
+            <div class="tower-card-icon">🏹</div>
+            <div class="tower-card-info">
+              <span class="tower-card-name">Archer</span>
+              <span class="tower-card-cost">Rs 100</span>
+            </div>
+          </div>
+          <div class="tower-card" data-type="cannon">
+            <div class="tower-card-icon">💣</div>
+            <div class="tower-card-info">
+              <span class="tower-card-name">Cannon</span>
+              <span class="tower-card-cost">Rs 150</span>
+            </div>
+          </div>
+          <div class="tower-card" data-type="magic">
+            <div class="tower-card-icon">🔮</div>
+            <div class="tower-card-info">
+              <span class="tower-card-name">Magic</span>
+              <span class="tower-card-cost">Rs 175</span>
+            </div>
+          </div>
+          <div class="tower-card" data-type="lightning">
+            <div class="tower-card-icon">⚡</div>
+            <div class="tower-card-info">
+              <span class="tower-card-name">Lightning</span>
+              <span class="tower-card-cost">Rs 225</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tower Inspection Modal / Panel -->
+      <div id="tower-inspector" class="inspector-panel hidden">
+        <div class="inspector-header">
+          <div class="inspector-title-row">
+            <span id="insp-icon" class="insp-icon">🏹</span>
+            <div>
+              <div id="insp-name" class="insp-name">Archer Tower</div>
+              <div id="insp-level" class="insp-level">Level 1</div>
+            </div>
+          </div>
+          <button id="btn-close-inspector" class="insp-close">✕</button>
+        </div>
+        <div class="inspector-stats">
+          <div class="stat-pill"><span class="pill-lbl">Damage</span><span id="insp-dmg" class="pill-val">25</span></div>
+          <div class="stat-pill"><span class="pill-lbl">Range</span><span id="insp-rng" class="pill-val">140</span></div>
+          <div class="stat-pill"><span class="pill-lbl">Speed</span><span id="insp-spd" class="pill-val">1.2s</span></div>
+          <div class="stat-pill"><span class="pill-lbl">Kills</span><span id="insp-kills" class="pill-val">0</span></div>
+        </div>
+        <div class="inspector-actions">
+          <button id="btn-upgrade-tower" class="btn-inspect btn-upgrade">
+            <span>⬆️ Upgrade</span>
+            <span id="insp-upgrade-cost" class="cost-tag">Rs 120</span>
+          </button>
+          <button id="btn-sell-tower" class="btn-inspect btn-sell">
+            <span>💰 Sell</span>
+            <span id="insp-sell-refund" class="cost-tag">+Rs 70</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Free Grid Tower Selection Modal -->
+      <div id="tile-tower-modal" class="tile-tower-modal hidden">
+        <div class="tower-select-panel">
+          <div class="tower-select-header">
+            <div>
+              <div class="tower-select-title">🏰 Build Defense Tower</div>
+              <div id="tile-select-coord" class="tower-select-coord">Grass Block</div>
+            </div>
+            <button id="btn-close-tower-modal" class="btn-cancel-placement" title="Close">✕</button>
+          </div>
+          <div class="tower-options-list">
+            <button class="tower-select-option" data-build="archer">
+              <span class="tower-opt-icon">🏹</span>
+              <div class="tower-opt-details">
+                <span class="tower-opt-name">Archer</span>
+                <span class="tower-opt-sub">Fast physical arrows</span>
+              </div>
+              <span class="tower-opt-cost">Rs 100</span>
+            </button>
+            <button class="tower-select-option" data-build="cannon">
+              <span class="tower-opt-icon">💣</span>
+              <div class="tower-opt-details">
+                <span class="tower-opt-name">Cannon</span>
+                <span class="tower-opt-sub">Blast area damage</span>
+              </div>
+              <span class="tower-opt-cost">Rs 150</span>
+            </button>
+            <button class="tower-select-option" data-build="magic">
+              <span class="tower-opt-icon">🔮</span>
+              <div class="tower-opt-details">
+                <span class="tower-opt-name">Magic</span>
+                <span class="tower-opt-sub">Frost slows enemies</span>
+              </div>
+              <span class="tower-opt-cost">Rs 175</span>
+            </button>
+            <button class="tower-select-option" data-build="lightning">
+              <span class="tower-opt-icon">⚡</span>
+              <div class="tower-opt-details">
+                <span class="tower-opt-name">Lightning</span>
+                <span class="tower-opt-sub">Chain 3 enemies</span>
+              </div>
+              <span class="tower-opt-cost">Rs 225</span>
+            </button>
+          </div>
+          <button id="btn-cancel-tower-modal" class="btn-cancel-select">CANCEL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE CUSTOMIZATION MODAL -->
+    <div id="profile-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>Player Customization</h2>
+          <button class="modal-close" id="btn-close-profile-header" data-close="profile-modal" title="Back without saving">✕</button>
+        </div>
+        <div class="profile-preview-box">
+          <div class="large-avatar-frame" id="avatar-preview-container">
+            <img id="profile-modal-img" src="" alt="Avatar" class="large-avatar-img hidden" />
+            <div id="profile-modal-fallback" class="large-avatar-fallback">👤</div>
+          </div>
+          <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" />
+          <div class="profile-avatar-actions">
+            <button id="btn-upload-avatar" class="btn-subaction">📷 Upload Picture</button>
+            <button id="btn-remove-avatar" class="btn-subaction danger-subaction hidden" title="Use default avatar">Reset to Default</button>
+          </div>
+        </div>
+        <div class="profile-form-group">
+          <label for="input-player-name">Player Name</label>
+          <input type="text" id="input-player-name" maxlength="20" placeholder="Enter commander name..." />
+        </div>
+        <div class="modal-footer profile-modal-footer">
+          <button id="btn-close-profile" class="btn-secondary" style="flex: 1;">Back</button>
+          <button id="btn-save-profile" class="btn-primary" style="flex: 2;">SAVE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TASKS MODAL -->
+    <div id="tasks-modal" class="modal-overlay hidden">
+      <div class="modal-card modal-large">
+        <div class="modal-header">
+          <h2 id="tasks-title">TASKS 0 / 100</h2>
+          <button class="modal-close" data-close="tasks-modal">✕</button>
+        </div>
+        <div class="modal-content scrollable">
+          <div id="tasks-list" class="items-list">
+            <!-- Dynamic tasks rendered here -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary full-width" data-close="tasks-modal">CLOSE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAP SELECTION MODAL (25 MAPS) -->
+    <div id="map-select-modal" class="modal-overlay hidden">
+      <div class="modal-card map-select-card">
+        <div class="modal-header">
+          <h2>🗺️ REALM MAPS (25 REALMS)</h2>
+          <button class="modal-close" id="btn-close-map-select" title="Close">✕</button>
+        </div>
+        <p class="map-select-desc">Defend and conquer 25 unique realms! Complete each map in sequence to unlock subsequent territories.</p>
+        <div class="map-grid-container" id="map-grid-container">
+          <!-- Dynamically populated with 25 map cards -->
+        </div>
+        <div class="modal-footer">
+          <button id="btn-map-select-close" class="btn-secondary full-width">RETURN TO MENU</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHALLENGES MODAL -->
+    <div id="challenges-modal" class="modal-overlay hidden">
+      <div class="modal-card modal-large">
+        <div class="modal-header">
+          <h2 id="challenges-title">CHALLENGES 0 / 100</h2>
+          <button class="modal-close" data-close="challenges-modal">✕</button>
+        </div>
+        <div class="modal-content scrollable">
+          <div id="challenges-list" class="items-list">
+            <!-- Dynamic challenges rendered here -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary full-width" data-close="challenges-modal">CLOSE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>⚙️ Settings</h2>
+          <button class="modal-close" data-close="settings-modal">✕</button>
+        </div>
+        <div class="settings-body">
+          <!-- 1. MASTER VOLUME -->
+          <div class="setting-section" id="section-master-volume">
+            <div class="setting-section-header">
+              <span class="setting-section-title">🔊 MASTER VOLUME</span>
+            </div>
+            <div class="volume-slider-box">
+              <div class="volume-slider-row">
+                <span id="volume-icon" class="volume-icon">🔊</span>
+                <input type="range" id="slider-master-volume" min="0" max="100" value="70" class="volume-slider" title="Master Volume" />
+                <span id="volume-percent-text" class="volume-percent-text">70%</span>
+              </div>
+            </div>
+            <div class="audio-subtoggles">
+              <div class="subtoggle-item">
+                <span>Music</span>
+                <label class="switch switch-sm">
+                  <input type="checkbox" id="toggle-music" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="subtoggle-item">
+                <span>Sound FX</span>
+                <label class="switch switch-sm">
+                  <input type="checkbox" id="toggle-sfx" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. GRAPHICS -->
+          <div class="setting-section" id="section-graphics">
+            <div class="setting-section-header">
+              <span class="setting-section-title">🎨 GRAPHICS</span>
+            </div>
+            <div class="quality-selector" id="graphics-selector">
+              <button class="btn-chip" data-quality="low">LOW</button>
+              <button class="btn-chip active" data-quality="medium">MEDIUM</button>
+              <button class="btn-chip" data-quality="high">HIGH</button>
+            </div>
+            <div id="graphics-desc" class="setting-info-desc">
+              <strong>MEDIUM:</strong> Normal particles • Normal animations • Normal effects
+            </div>
+          </div>
+
+          <!-- 3. DIFFICULTY -->
+          <div class="setting-section" id="section-difficulty">
+            <div class="setting-section-header">
+              <span class="setting-section-title">⚔️ DIFFICULTY</span>
+            </div>
+            <div class="difficulty-selector" id="difficulty-selector">
+              <button class="btn-difficulty active" data-diff="easy">EASY</button>
+              <button class="btn-difficulty" data-diff="normal">NORMAL</button>
+              <button class="btn-difficulty" data-diff="hard">HARD</button>
+            </div>
+            <div id="difficulty-desc" class="setting-info-desc">
+              <strong>EASY:</strong> Enemy HP: Low | Castle Dmg: Low | Speed: Very Slow | Spawns: Slow. Suitable for beginners.
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <div class="setting-danger-zone">
+            <button id="btn-reset-data" class="btn-danger full-width">Reset Game Data</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary full-width" data-close="settings-modal">BACK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESET CONFIRMATION MODAL -->
+    <div id="reset-confirm-modal" class="modal-overlay hidden">
+      <div class="modal-card alert-card">
+        <h3>Reset Game Data</h3>
+        <p class="alert-desc">Are you sure? All saved progress will be deleted.</p>
+        <div class="alert-actions">
+          <button id="btn-reset-cancel" class="btn-secondary">CANCEL</button>
+          <button id="btn-reset-confirm" class="btn-danger">RESET</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXIT / THANKS SCREEN -->
+    <div id="exit-screen" class="screen">
+      <div class="exit-card">
+        <div class="exit-badge">🏰</div>
+        <h1 class="exit-title">THANKS FOR PLAYING!</h1>
+        <p class="exit-desc">All your progress, commander profile, tasks, and coins have been safely saved.</p>
+        <div class="exit-buttons-container">
+          <button id="btn-return-game" class="btn-primary full-width">RETURN TO GAME</button>
+          <button id="btn-close-game" class="btn-secondary full-width">CLOSE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GAME OVER SCREEN -->
+    <div id="game-over-screen" class="screen">
+      <div class="game-over-card">
+        <h1 class="game-over-title">GAME OVER</h1>
+        
+        <div class="game-over-stats">
+          <div class="game-over-stat-line">
+            <span class="stat-line-label">Money Collected:</span>
+            <span id="go-money" class="stat-line-val">Rs 0</span>
+          </div>
+          <div class="game-over-stat-line">
+            <span class="stat-line-label">Kills:</span>
+            <span id="go-kills" class="stat-line-val">0</span>
+          </div>
+          <div class="game-over-stat-line">
+            <span class="stat-line-label">Playing Duration:</span>
+            <span id="go-duration" class="stat-line-val">00:00</span>
+          </div>
+        </div>
+
+        <div class="game-over-actions">
+          <button id="btn-go-restart" class="btn-primary full-width">RESTART</button>
+          <button id="btn-go-menu" class="btn-secondary full-width">MAIN MENU</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VICTORY / MAP COMPLETE SCREEN -->
+    <div id="victory-screen" class="screen">
+      <div class="victory-card">
+        <div class="victory-trophy">🏆</div>
+        <h1 id="vic-title" class="victory-title">MAP COMPLETE!</h1>
+        <p id="vic-subtitle" class="victory-subtitle">MAP 1 – GRASSLAND CLEARED!</p>
+        
+        <div class="victory-stats">
+          <div class="victory-stat-line">
+            <span class="stat-line-label">Map:</span>
+            <span id="vic-map" class="stat-line-val highlight">MAP 1 – Grassland</span>
+          </div>
+          <div class="victory-stat-line">
+            <span class="stat-line-label">Waves Cleared:</span>
+            <span id="vic-waves" class="stat-line-val highlight">50 / 50</span>
+          </div>
+          <div class="victory-stat-line">
+            <span class="stat-line-label">Difficulty:</span>
+            <span id="vic-difficulty" class="stat-line-val highlight">EASY</span>
+          </div>
+          <div class="victory-stat-line">
+            <span class="stat-line-label">Castle Health:</span>
+            <span id="vic-castle" class="stat-line-val">🏰 100 / 100</span>
+          </div>
+          <div class="victory-stat-line">
+            <span class="stat-line-label">Total Gold:</span>
+            <span id="vic-money" class="stat-line-val">Rs 0</span>
+          </div>
+          <div class="victory-stat-line">
+            <span class="stat-line-label">Monsters Slain:</span>
+            <span id="vic-kills" class="stat-line-val">0</span>
+          </div>
+          <div class="victory-stat-line">
+            <span class="stat-line-label">Time Taken:</span>
+            <span id="vic-duration" class="stat-line-val">00:00</span>
+          </div>
+        </div>
+
+        <div class="victory-actions">
+          <button id="btn-next-map" class="btn-primary full-width">⚔️ NEXT MAP</button>
+          <button id="btn-play-again" class="btn-primary full-width hidden">🎉 PLAY AGAIN</button>
+          <button id="btn-vic-restart" class="btn-secondary full-width">PLAY MAP AGAIN</button>
+          <button id="btn-vic-menu" class="btn-secondary full-width">MAIN MENU</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAUSE OVERLAY -->
+    <div id="pause-modal" class="modal-overlay hidden">
+      <div class="modal-card alert-card">
+        <h2>Game Paused</h2>
+        <div class="pause-stats">
+          <p>Current Wave: <span id="pause-wave-num">1</span></p>
+          <p>Duration: <span id="pause-duration">00:00</span></p>
+        </div>
+        <div class="pause-actions">
+          <button id="btn-resume" class="btn-primary full-width">RESUME</button>
+          <button id="btn-pause-restart" class="btn-secondary full-width">RESTART</button>
+          <button id="btn-pause-menu" class="btn-secondary full-width">MAIN MENU</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHALLENGE COMPLETE MODAL -->
+    <div id="challenge-complete-modal" class="modal-overlay hidden">
+      <div class="modal-card challenge-result-card victory-card">
+        <div class="result-trophy">🏆</div>
+        <h1 class="result-title complete-title">CHALLENGE COMPLETE!</h1>
+        <div id="comp-ch-name" class="result-subtitle">Challenge: Survive 5 Waves</div>
+        <div class="result-reward-box">
+          <span class="reward-lbl">Reward:</span>
+          <span id="comp-ch-reward" class="reward-val">+Rs 100</span>
+        </div>
+        <div class="result-actions">
+          <button id="btn-claim-challenge-reward" class="btn-primary full-width">CLAIM REWARD</button>
+          <button id="btn-back-challenges-from-win" class="btn-secondary full-width hidden">BACK TO CHALLENGES</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHALLENGE FAILED MODAL -->
+    <div id="challenge-failed-modal" class="modal-overlay hidden">
+      <div class="modal-card challenge-result-card defeat-card">
+        <div class="result-trophy">💀</div>
+        <h1 class="result-title failed-title">CHALLENGE FAILED</h1>
+        <div id="fail-ch-name" class="result-subtitle">Challenge: Survive 5 Waves</div>
+        <div class="result-stats-box">
+          <div class="res-stat-item">
+            <span class="res-stat-lbl">Kills:</span>
+            <span id="fail-ch-kills" class="res-stat-val">0</span>
+          </div>
+          <div class="res-stat-item">
+            <span class="res-stat-lbl">Playing Duration:</span>
+            <span id="fail-ch-duration" class="res-stat-val">00:00</span>
+          </div>
+        </div>
+        <div class="result-actions">
+          <button id="btn-retry-challenge" class="btn-primary full-width">RETRY</button>
+          <button id="btn-back-challenges-from-fail" class="btn-secondary full-width">BACK TO CHALLENGES</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
