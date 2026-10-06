@@ -126,9 +126,9 @@
           <span id="hud-kills" class="stat-value">0</span>
         </div>
         <div class="hud-controls">
-          <button id="btn-speed" class="hud-btn" title="Toggle Speed">1x</button>
-          <button id="btn-pause" class="hud-btn" title="Pause Game">⏸️</button>
-          <button id="btn-ingame-menu" class="hud-btn" title="Return to Menu">🚪</button>
+          <button id="btn-speed" class="hud-btn" title="Speed Toggle (1x / 2x / 3x)">1x</button>
+          <button id="btn-pause" class="hud-btn" title="Pause Game">⏸</button>
+          <button id="btn-hud-map" class="hud-btn hud-btn-text" title="Map Selection">MAP</button>
         </div>
       </div>
 
@@ -186,11 +186,11 @@
         </div>
 
         <div id="tower-selector-bar">
-          <div class="tower-card" data-type="archer">
-            <div class="tower-card-icon">🏹</div>
+          <div class="tower-card" data-type="lightning">
+            <div class="tower-card-icon">⚡</div>
             <div class="tower-card-info">
-              <span class="tower-card-name">Archer</span>
-              <span class="tower-card-cost">Rs 100</span>
+              <span class="tower-card-name">Lightning</span>
+              <span class="tower-card-cost">Rs 120</span>
             </div>
           </div>
           <div class="tower-card" data-type="cannon">
@@ -200,18 +200,18 @@
               <span class="tower-card-cost">Rs 150</span>
             </div>
           </div>
-          <div class="tower-card" data-type="magic">
-            <div class="tower-card-icon">🔮</div>
+          <div class="tower-card" data-type="ice">
+            <div class="tower-card-icon">❄️</div>
             <div class="tower-card-info">
-              <span class="tower-card-name">Magic</span>
-              <span class="tower-card-cost">Rs 175</span>
+              <span class="tower-card-name">Ice</span>
+              <span class="tower-card-cost">Rs 100</span>
             </div>
           </div>
-          <div class="tower-card" data-type="lightning">
-            <div class="tower-card-icon">⚡</div>
+          <div class="tower-card" data-type="fire">
+            <div class="tower-card-icon">🔥</div>
             <div class="tower-card-info">
-              <span class="tower-card-name">Lightning</span>
-              <span class="tower-card-cost">Rs 225</span>
+              <span class="tower-card-name">Fire</span>
+              <span class="tower-card-cost">Rs 130</span>
             </div>
           </div>
         </div>
@@ -258,37 +258,37 @@
             <button id="btn-close-tower-modal" class="btn-cancel-placement" title="Close">✕</button>
           </div>
           <div class="tower-options-list">
-            <button class="tower-select-option" data-build="archer">
-              <span class="tower-opt-icon">🏹</span>
+            <button class="tower-select-option" data-build="lightning">
+              <span class="tower-opt-icon">⚡</span>
               <div class="tower-opt-details">
-                <span class="tower-opt-name">Archer</span>
-                <span class="tower-opt-sub">Fast physical arrows</span>
+                <span class="tower-opt-name">Lightning</span>
+                <span class="tower-opt-sub">Very fast chain electric attacks</span>
               </div>
-              <span class="tower-opt-cost">Rs 100</span>
+              <span class="tower-opt-cost">Rs 120</span>
             </button>
             <button class="tower-select-option" data-build="cannon">
               <span class="tower-opt-icon">💣</span>
               <div class="tower-opt-details">
                 <span class="tower-opt-name">Cannon</span>
-                <span class="tower-opt-sub">Blast area damage</span>
+                <span class="tower-opt-sub">Heavy explosive splash damage</span>
               </div>
               <span class="tower-opt-cost">Rs 150</span>
             </button>
-            <button class="tower-select-option" data-build="magic">
-              <span class="tower-opt-icon">🔮</span>
+            <button class="tower-select-option" data-build="ice">
+              <span class="tower-opt-icon">❄️</span>
               <div class="tower-opt-details">
-                <span class="tower-opt-name">Magic</span>
-                <span class="tower-opt-sub">Frost slows enemies</span>
+                <span class="tower-opt-name">Ice</span>
+                <span class="tower-opt-sub">Freezing aura slows enemies</span>
               </div>
-              <span class="tower-opt-cost">Rs 175</span>
+              <span class="tower-opt-cost">Rs 100</span>
             </button>
-            <button class="tower-select-option" data-build="lightning">
-              <span class="tower-opt-icon">⚡</span>
+            <button class="tower-select-option" data-build="fire">
+              <span class="tower-opt-icon">🔥</span>
               <div class="tower-opt-details">
-                <span class="tower-opt-name">Lightning</span>
-                <span class="tower-opt-sub">Chain 3 enemies</span>
+                <span class="tower-opt-name">Fire</span>
+                <span class="tower-opt-sub">Searing flame burn damage over time</span>
               </div>
-              <span class="tower-opt-cost">Rs 225</span>
+              <span class="tower-opt-cost">Rs 130</span>
             </button>
           </div>
           <button id="btn-cancel-tower-modal" class="btn-cancel-select">CANCEL</button>
@@ -386,30 +386,44 @@
           <button class="modal-close" data-close="settings-modal">✕</button>
         </div>
         <div class="settings-body">
-          <!-- 1. MASTER VOLUME -->
+          <!-- 1. AUDIO CONTROLS -->
           <div class="setting-section" id="section-master-volume">
             <div class="setting-section-header">
-              <span class="setting-section-title">🔊 MASTER VOLUME</span>
+              <span class="setting-section-title">🔊 AUDIO SETTINGS</span>
             </div>
+            
             <div class="volume-slider-box">
+              <div class="volume-slider-label">Master Volume</div>
               <div class="volume-slider-row">
-                <span id="volume-icon" class="volume-icon">🔊</span>
+                <span class="volume-icon">🔊</span>
                 <input type="range" id="slider-master-volume" min="0" max="100" value="70" class="volume-slider" title="Master Volume" />
                 <span id="volume-percent-text" class="volume-percent-text">70%</span>
               </div>
             </div>
-            <div class="audio-subtoggles">
-              <div class="subtoggle-item">
-                <span>Music</span>
-                <label class="switch switch-sm">
-                  <input type="checkbox" id="toggle-music" checked />
-                  <span class="slider"></span>
-                </label>
+
+            <div class="volume-slider-box" style="margin-top: 8px;">
+              <div class="volume-slider-label">Music Volume</div>
+              <div class="volume-slider-row">
+                <span class="volume-icon">🎵</span>
+                <input type="range" id="slider-music-volume" min="0" max="100" value="80" class="volume-slider" title="Music Volume" />
+                <span id="music-percent-text" class="volume-percent-text">80%</span>
               </div>
+            </div>
+
+            <div class="volume-slider-box" style="margin-top: 8px;">
+              <div class="volume-slider-label">Sound Effects Volume</div>
+              <div class="volume-slider-row">
+                <span class="volume-icon">⚔️</span>
+                <input type="range" id="slider-sfx-volume" min="0" max="100" value="85" class="volume-slider" title="SFX Volume" />
+                <span id="sfx-percent-text" class="volume-percent-text">85%</span>
+              </div>
+            </div>
+
+            <div class="audio-subtoggles" style="margin-top: 10px;">
               <div class="subtoggle-item">
-                <span>Sound FX</span>
+                <span style="font-weight: 700;">🔇 MUTE ALL AUDIO</span>
                 <label class="switch switch-sm">
-                  <input type="checkbox" id="toggle-sfx" checked />
+                  <input type="checkbox" id="toggle-mute-all" />
                   <span class="slider"></span>
                 </label>
               </div>

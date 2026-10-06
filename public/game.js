@@ -5,16 +5,27 @@
 (function() {
   'use strict';
 
-  // --- AUDIO SYNTHESIS ENGINE (Web Audio API) ---
+  // --- COMPREHENSIVE AUDIO SYNTHESIS ENGINE (Web Audio API) ---
   class SoundManager {
     constructor() {
       this.ctx = null;
       this.masterGain = null;
-      const savedVol = localStorage.getItem('vtd_master_volume');
-      this.masterVolume = savedVol !== null ? Math.max(0, Math.min(1, parseFloat(savedVol))) : 0.70;
-      this.sfxEnabled = true;
-      this.musicEnabled = true;
+      this.sfxGain = null;
+      this.musicGain = null;
+
+      const savedMaster = localStorage.getItem('vtd_master_volume');
+      const savedMusic = localStorage.getItem('vtd_music_volume');
+      const savedSfx = localStorage.getItem('vtd_sfx_volume');
+      const savedMute = localStorage.getItem('vtd_muted');
+
+      this.masterVolume = savedMaster !== null ? Math.max(0, Math.min(1, parseFloat(savedMaster))) : 0.70;
+      this.musicVolume = savedMusic !== null ? Math.max(0, Math.min(1, parseFloat(savedMusic))) : 0.80;
+      this.sfxVolume = savedSfx !== null ? Math.max(0, Math.min(1, parseFloat(savedSfx))) : 0.85;
+      this.isMuted = savedMute === 'true';
+
       this.musicTimer = null;
+      this.currentTrackType = null;
+      this.lastPlayTimes = {};
     }
 
     init() {
@@ -22,32 +33,74 @@
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (AudioCtx) {
           this.ctx = new AudioCtx();
+          
           this.masterGain = this.ctx.createGain();
-          this.masterGain.gain.setValueAtTime(this.masterVolume, this.ctx.currentTime);
+          this.sfxGain = this.ctx.createGain();
+          this.musicGain = this.ctx.createGain();
+
+          this.sfxGain.connect(this.masterGain);
+          this.musicGain.connect(this.masterGain);
           this.masterGain.connect(this.ctx.destination);
+
+          this.updateGains();
         }
       }
       if (this.ctx && this.ctx.state === 'suspended') {
         this.ctx.resume();
       }
-      if (this.ctx && this.masterGain) {
-        this.masterGain.gain.setValueAtTime(this.masterVolume, this.ctx.currentTime);
+      if (this.ctx) {
+        this.updateGains();
       }
+    }
+
+    updateGains() {
+      if (!this.ctx || !this.masterGain) return;
+      const effectiveMaster = this.isMuted ? 0 : this.masterVolume;
+      const now = this.ctx.currentTime;
+      this.masterGain.gain.setValueAtTime(effectiveMaster, now);
+      this.sfxGain.gain.setValueAtTime(this.sfxVolume, now);
+      this.musicGain.gain.setValueAtTime(this.musicVolume, now);
     }
 
     setMasterVolume(val) {
       this.masterVolume = Math.max(0, Math.min(1, val));
       localStorage.setItem('vtd_master_volume', this.masterVolume.toString());
-      if (this.ctx && this.masterGain) {
-        this.masterGain.gain.setValueAtTime(this.masterVolume, this.ctx.currentTime);
-      }
+      this.updateGains();
     }
 
-    playTone(freq, type, duration, vol = 0.2, freqEnd = null) {
-      if (!this.sfxEnabled || this.masterVolume <= 0.001) return;
+    setMusicVolume(val) {
+      this.musicVolume = Math.max(0, Math.min(1, val));
+      localStorage.setItem('vtd_music_volume', this.musicVolume.toString());
+      this.updateGains();
+    }
+
+    setSfxVolume(val) {
+      this.sfxVolume = Math.max(0, Math.min(1, val));
+      localStorage.setItem('vtd_sfx_volume', this.sfxVolume.toString());
+      this.updateGains();
+    }
+
+    setMuteAll(muted) {
+      this.isMuted = !!muted;
+      localStorage.setItem('vtd_muted', this.isMuted.toString());
+      this.updateGains();
+    }
+
+    // Sound Throttling to prevent audio buffer saturation
+    isThrottled(soundKey, minIntervalMs = 70) {
+      const now = Date.now();
+      const last = this.lastPlayTimes[soundKey] || 0;
+      if (now - last < minIntervalMs) return true;
+      this.lastPlayTimes[soundKey] = now;
+      return false;
+    }
+
+    playTone(freq, type, duration, vol = 0.2, freqEnd = null, targetGainNode = null) {
+      if (this.isMuted || this.masterVolume <= 0.001) return;
       this.init();
-      if (!this.ctx || !this.masterGain) return;
+      if (!this.ctx || !this.sfxGain) return;
       try {
+        const dest = targetGainNode || this.sfxGain;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = type;
@@ -58,17 +111,18 @@
         gain.gain.setValueAtTime(vol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
         osc.connect(gain);
-        gain.connect(this.masterGain);
+        gain.connect(dest);
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
       } catch (e) {}
     }
 
-    playNoise(duration, vol = 0.2) {
-      if (!this.sfxEnabled || this.masterVolume <= 0.001) return;
+    playNoise(duration, vol = 0.2, targetGainNode = null) {
+      if (this.isMuted || this.masterVolume <= 0.001) return;
       this.init();
-      if (!this.ctx || !this.masterGain) return;
+      if (!this.ctx || !this.sfxGain) return;
       try {
+        const dest = targetGainNode || this.sfxGain;
         const bufferSize = this.ctx.sampleRate * duration;
         const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -81,47 +135,267 @@
         gain.gain.setValueAtTime(vol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
         noise.connect(gain);
-        gain.connect(this.masterGain);
+        gain.connect(dest);
         noise.start();
       } catch (e) {}
     }
 
-    // --- UNIQUE TOWER SOUND EFFECTS ---
+    // --- 1. MAIN MENU SOUNDS ---
+    startMenuMusic() {
+      if (this.currentTrackType === 'menu') return;
+      this.stopMusic();
+      this.currentTrackType = 'menu';
+      const chords = [
+        [220, 261, 329], // A minor
+        [174, 220, 261], // F major
+        [196, 246, 293], // G major
+        [164, 207, 246]  // E minor
+      ];
+      let step = 0;
+      this.musicTimer = setInterval(() => {
+        if (this.isMuted || !this.ctx || this.masterVolume <= 0.001) return;
+        const chord = chords[step % chords.length];
+        chord.forEach((freq, idx) => {
+          setTimeout(() => {
+            this.playTone(freq, 'sine', 0.8, 0.035, null, this.musicGain);
+          }, idx * 120);
+        });
+        step++;
+      }, 1600);
+    }
+
+    buttonClick() {
+      if (this.isThrottled('btn_click', 50)) return;
+      this.playTone(480, 'sine', 0.06, 0.12, 680);
+    }
+    buttonDisabled() {
+      if (this.isThrottled('btn_disabled', 80)) return;
+      this.playTone(180, 'sawtooth', 0.12, 0.1, 90);
+    }
+    buttonHover() {
+      if (this.isThrottled('btn_hover', 60)) return;
+      this.playTone(880, 'sine', 0.03, 0.03);
+    }
+    profileClick() { this.playTone(520, 'triangle', 0.08, 0.12, 780); }
+    mapButtonClick() { this.playTone(440, 'triangle', 0.1, 0.15, 660); }
+    settingsButtonClick() { this.playTone(600, 'sine', 0.08, 0.12, 800); }
+    taskButtonClick() { this.playTone(580, 'sine', 0.08, 0.12, 720); }
+    challengeButtonClick() { this.playTone(640, 'sine', 0.08, 0.12, 840); }
+    exitButtonClick() { this.playTone(320, 'sawtooth', 0.15, 0.12, 160); }
+
+    // --- 2. MAP SELECTION SOUNDS ---
+    openMapModal() {
+      this.playTone(400, 'triangle', 0.2, 0.15, 800);
+      setTimeout(() => this.playTone(800, 'sine', 0.25, 0.12, 1200), 80);
+    }
+    selectUnlockedMap() { this.playTone(600, 'sine', 0.08, 0.15, 900); }
+    clickLockedMap() {
+      this.playTone(140, 'sawtooth', 0.2, 0.18, 70);
+      this.playNoise(0.1, 0.12);
+    }
+    mapUnlocked() {
+      const fanfare = [523, 659, 784, 1046];
+      fanfare.forEach((f, i) => setTimeout(() => this.playTone(f, 'sine', 0.2, 0.18), i * 90));
+    }
+    confirmPlayMap() {
+      this.playTone(330, 'sawtooth', 0.3, 0.2, 554);
+      setTimeout(() => this.playTone(554, 'sawtooth', 0.4, 0.22, 659), 120);
+    }
+    enterMapTransition() {
+      this.playTone(200, 'sine', 0.4, 0.15, 600);
+      this.playNoise(0.25, 0.1);
+    }
+
+    // --- 3. GAMEPLAY MUSIC ---
+    startMusic(mapIndex = 1, isBossWave = false) {
+      this.startGameplayMusic(mapIndex, isBossWave);
+    }
+    Startmusic(mapIndex = 1, isBossWave = false) {
+      this.startGameplayMusic(mapIndex, isBossWave);
+    }
+    startGameplayMusic(mapIndex = 1, isBossWave = false) {
+      const trackKey = isBossWave ? 'boss' : (mapIndex === 25 ? 'final' : 'gameplay');
+      if (this.currentTrackType === trackKey) return;
+      this.stopMusic();
+      this.currentTrackType = trackKey;
+
+      if (trackKey === 'final') {
+        // Epic Final Map 25 Celestial Anthem
+        const bassNotes = [110, 130, 146, 164];
+        const leadNotes = [440, 554, 659, 880, 659, 554];
+        let step = 0;
+        this.musicTimer = setInterval(() => {
+          if (this.isMuted || !this.ctx || this.masterVolume <= 0.001) return;
+          this.playTone(bassNotes[step % bassNotes.length], 'sawtooth', 0.4, 0.06, null, this.musicGain);
+          this.playTone(leadNotes[step % leadNotes.length], 'triangle', 0.25, 0.05, null, this.musicGain);
+          step++;
+        }, 320);
+      } else if (trackKey === 'boss') {
+        // Intense Fast Boss Battle Theme
+        const bossNotes = [98, 110, 98, 123, 98, 110, 130, 98];
+        let step = 0;
+        this.musicTimer = setInterval(() => {
+          if (this.isMuted || !this.ctx || this.masterVolume <= 0.001) return;
+          this.playTone(bossNotes[step % bossNotes.length], 'sawtooth', 0.22, 0.07, null, this.musicGain);
+          this.playNoise(0.08, 0.04, this.musicGain);
+          step++;
+        }, 220);
+      } else {
+        // Dynamic Fantasy Action TD Theme
+        const notes = [146, 185, 220, 293, 220, 185, 146, 164];
+        let step = 0;
+        this.musicTimer = setInterval(() => {
+          if (this.isMuted || !this.ctx || this.masterVolume <= 0.001) return;
+          this.playTone(notes[step % notes.length], 'triangle', 0.35, 0.045, null, this.musicGain);
+          step++;
+        }, 420);
+      }
+    }
+
+    stopMusic() {
+      if (this.musicTimer) {
+        clearInterval(this.musicTimer);
+        this.musicTimer = null;
+      }
+      this.currentTrackType = null;
+    }
+
+    // --- 4. TOWER ATTACK SOUNDS ---
     arrowShoot() {
-      // Archer: Crisp bow release twang dropping frequency rapidly
-      this.playTone(680, 'triangle', 0.09, 0.16, 280);
+      this.archerShoot();
+    }
+    archerShoot() {
+      if (this.isThrottled('tower_archer', 60)) return;
+      this.playTone(680, 'triangle', 0.09, 0.15, 280);
     }
     cannonShoot() {
-      // Cannon: Deep explosive blast thud and noise burst
-      this.playTone(110, 'sawtooth', 0.35, 0.32, 28);
-      this.playNoise(0.26, 0.28);
+      if (this.isThrottled('tower_cannon', 100)) return;
+      this.playTone(110, 'sawtooth', 0.32, 0.28, 28);
+      this.playNoise(0.24, 0.22);
     }
     magicShoot() {
-      // Magic: Mystical crystalline frost sweep with sparkling harmonic chime
-      this.playTone(460, 'sine', 0.19, 0.18, 880);
-      setTimeout(() => this.playTone(690, 'triangle', 0.14, 0.12, 1150), 35);
+      if (this.isThrottled('tower_magic', 80)) return;
+      this.playTone(460, 'sine', 0.18, 0.16, 880);
+      setTimeout(() => this.playTone(690, 'triangle', 0.12, 0.1), 30);
+    }
+    iceShoot() {
+      if (this.isThrottled('tower_ice', 80)) return;
+      this.playTone(820, 'sine', 0.16, 0.15, 1240);
+    }
+    fireShoot() {
+      if (this.isThrottled('tower_fire', 80)) return;
+      this.playTone(220, 'sawtooth', 0.22, 0.18, 90);
+      this.playNoise(0.18, 0.18);
     }
     lightningShoot() {
-      // Lightning: High-voltage crackling electric discharge zap
-      this.playTone(980, 'square', 0.15, 0.22, 90);
-      this.playNoise(0.12, 0.24);
+      if (this.isThrottled('tower_lightning', 90)) return;
+      this.playTone(980, 'square', 0.14, 0.2, 90);
+      this.playNoise(0.1, 0.2);
     }
-    enemyHit() { this.playTone(280, 'sine', 0.08, 0.1, 150); }
-    enemyDeath() { this.playTone(180, 'triangle', 0.2, 0.15, 60); }
-    coinCollect() {
-      this.playTone(987, 'sine', 0.08, 0.15);
-      setTimeout(() => this.playTone(1318, 'sine', 0.12, 0.15), 60);
+    sniperShoot() {
+      if (this.isThrottled('tower_sniper', 120)) return;
+      this.playTone(1200, 'sawtooth', 0.12, 0.25, 180);
+      this.playNoise(0.15, 0.25);
     }
-    lifeLost() {
-      this.playTone(220, 'sawtooth', 0.35, 0.25, 80);
+    missileShoot() {
+      if (this.isThrottled('tower_missile', 120)) return;
+      this.playTone(280, 'sawtooth', 0.35, 0.22, 600);
+      this.playNoise(0.2, 0.2);
+    }
+    laserShoot() {
+      if (this.isThrottled('tower_laser', 50)) return;
+      this.playTone(1400, 'sine', 0.08, 0.12, 900);
+    }
+    ultimateShoot() {
+      if (this.isThrottled('tower_ultimate', 120)) return;
+      this.playTone(300, 'sawtooth', 0.45, 0.35, 1200);
+      this.playNoise(0.3, 0.3);
+    }
+
+    // --- 5. TOWER PLACEMENT & UPGRADE SOUNDS ---
+    towerBuild() {
+      this.playTone(180, 'triangle', 0.15, 0.18, 360);
+      this.playNoise(0.1, 0.15);
+    }
+    towerConfirm() {
+      this.playTone(520, 'sine', 0.1, 0.16);
+      setTimeout(() => this.playTone(780, 'sine', 0.12, 0.16), 60);
+    }
+    insufficientMoney() {
+      this.playTone(160, 'sawtooth', 0.18, 0.2, 80);
+      setTimeout(() => this.playTone(120, 'sawtooth', 0.18, 0.2, 60), 80);
+    }
+    upgradeSound(level = 1) {
+      this.towerUpgrade(level);
+    }
+    towerUpgrade(level = 1) {
+      const pitchOffset = Math.min(400, level * 35);
+      this.playTone(440 + pitchOffset, 'sine', 0.1, 0.18);
+      setTimeout(() => this.playTone(554 + pitchOffset, 'sine', 0.1, 0.18), 60);
+      setTimeout(() => this.playTone(659 + pitchOffset, 'sine', 0.14, 0.2), 120);
+    }
+    towerSell() {
+      this.playTone(987, 'sine', 0.08, 0.18);
+      setTimeout(() => this.playTone(1318, 'sine', 0.1, 0.18), 50);
+      setTimeout(() => this.playTone(1568, 'sine', 0.12, 0.18), 100);
+    }
+    towerSelect() { this.playTone(620, 'sine', 0.05, 0.1); }
+
+    // --- 6. ENEMY & COMBAT SOUNDS ---
+    enemyMove(typeKey) {
+      if (this.isThrottled('enemy_move_' + typeKey, 1200)) return;
+      if (typeKey === 'flying' || typeKey === 'swarm') {
+        this.playTone(380, 'sine', 0.1, 0.03, 420);
+      } else if (typeKey === 'heavy' || typeKey === 'tank') {
+        this.playTone(90, 'triangle', 0.12, 0.04, 50);
+      }
+    }
+    enemyHit() {
+      if (this.isThrottled('enemy_hit', 60)) return;
+      this.playTone(280, 'sine', 0.07, 0.1, 150);
+    }
+    critHit() {
+      this.playTone(1200, 'triangle', 0.12, 0.25, 400);
+      this.playNoise(0.08, 0.18);
+    }
+    enemyDeath() {
+      if (this.isThrottled('enemy_death', 70)) return;
+      this.playTone(180, 'triangle', 0.18, 0.15, 60);
+    }
+    bossHit() {
+      if (this.isThrottled('boss_hit', 100)) return;
+      this.playTone(120, 'sawtooth', 0.2, 0.22, 50);
+      this.playNoise(0.12, 0.15);
+    }
+
+    // --- 7. CASTLE SOUNDS ---
+    castleProximityWarning() {
+      if (this.isThrottled('castle_warn', 1500)) return;
+      this.playTone(220, 'square', 0.2, 0.1, 180);
     }
     castleDamage() {
       this.playTone(90, 'sawtooth', 0.45, 0.35, 30);
       this.playNoise(0.4, 0.3);
     }
+    castleLowHealthWarning() {
+      if (this.isThrottled('castle_low_hp', 1800)) return;
+      this.playTone(300, 'sawtooth', 0.3, 0.25, 150);
+      setTimeout(() => this.playTone(300, 'sawtooth', 0.3, 0.25, 150), 200);
+    }
+    castleDestruction() {
+      this.playTone(60, 'sawtooth', 0.8, 0.4, 20);
+      this.playNoise(0.7, 0.4);
+    }
+
+    // --- 8. WAVE & BOSS SOUNDS ---
+    waveCountdownTick() { this.playTone(800, 'sine', 0.05, 0.12); }
     waveHorn() {
-      this.playTone(330, 'sawtooth', 0.5, 0.2, 440);
-      setTimeout(() => this.playTone(440, 'sawtooth', 0.7, 0.2, 554), 200);
+      this.playTone(330, 'sawtooth', 0.5, 0.22, 440);
+      setTimeout(() => this.playTone(440, 'sawtooth', 0.7, 0.22, 554), 200);
+    }
+    waveComplete() {
+      const fanfare = [523, 659, 784];
+      fanfare.forEach((f, idx) => setTimeout(() => this.playTone(f, 'sine', 0.15, 0.18), idx * 100));
     }
     bossSpawn() {
       this.playTone(70, 'sawtooth', 0.7, 0.38, 45);
@@ -129,21 +403,37 @@
       setTimeout(() => this.playTone(105, 'sawtooth', 0.6, 0.32, 50), 220);
     }
     bossRoar() {
-      this.playTone(115, 'sawtooth', 0.45, 0.3, 50);
+      this.playTone(115, 'sawtooth', 0.45, 0.32, 50);
       this.playNoise(0.35, 0.25);
     }
-    victorySound() {
-      const fanfare = [
-        [523.25, 0.14], // C5
-        [659.25, 0.14], // E5
-        [783.99, 0.18], // G5
-        [1046.50, 0.65] // C6
-      ];
-      fanfare.forEach(([f, dur], idx) => {
-        setTimeout(() => this.playTone(f, 'triangle', dur, 0.35), idx * 130);
-      });
+    bossDefeated() {
+      this.playTone(150, 'sawtooth', 0.5, 0.35, 400);
+      this.playNoise(0.4, 0.3);
+      const fanfare = [523, 659, 784, 1046, 1318];
+      fanfare.forEach((f, idx) => setTimeout(() => this.playTone(f, 'triangle', 0.2, 0.25), idx * 110));
     }
+
+    // --- 9. ECONOMY SOUNDS ---
+    coinCollect() {
+      if (this.isThrottled('coin_collect', 50)) return;
+      this.playTone(987, 'sine', 0.08, 0.15);
+      setTimeout(() => this.playTone(1318, 'sine', 0.12, 0.15), 50);
+    }
+    waveReward() {
+      const notes = [659, 784, 987, 1318];
+      notes.forEach((f, i) => setTimeout(() => this.playTone(f, 'sine', 0.12, 0.16), i * 70));
+    }
+    taskClaimReward() {
+      const notes = [523, 659, 784, 1046, 1318];
+      notes.forEach((f, i) => setTimeout(() => this.playTone(f, 'sine', 0.14, 0.2), i * 80));
+    }
+
+    // --- 10. PAUSE, GAME OVER & FINAL VICTORY ---
+    pauseGame() { this.playTone(350, 'sine', 0.15, 0.15, 180); }
+    resumeGame() { this.playTone(180, 'sine', 0.15, 0.15, 350); }
+    
     gameOverSound() {
+      this.stopMusic();
       const somber = [
         [261.63, 0.28], // C4
         [207.65, 0.32], // G#3
@@ -154,30 +444,42 @@
         setTimeout(() => this.playTone(f, 'sawtooth', dur, 0.28, f * 0.85), idx * 230);
       });
     }
-    buttonClick() { this.playTone(400, 'sine', 0.05, 0.08, 600); }
-    upgradeSound() {
-      this.playTone(523, 'sine', 0.1, 0.15);
-      setTimeout(() => this.playTone(659, 'sine', 0.1, 0.15), 70);
-      setTimeout(() => this.playTone(784, 'sine', 0.15, 0.15), 140);
+
+    victorySound() {
+      this.stopMusic();
+      const fanfare = [
+        [523.25, 0.14],
+        [659.25, 0.14],
+        [783.99, 0.18],
+        [1046.50, 0.65]
+      ];
+      fanfare.forEach(([f, dur], idx) => {
+        setTimeout(() => this.playTone(f, 'triangle', dur, 0.35), idx * 130);
+      });
     }
 
-    startMusic() {
-      if (!this.musicEnabled || this.musicTimer || this.masterVolume <= 0.001) return;
-      const notes = [220, 261, 293, 329, 392, 440, 392, 329];
-      let step = 0;
-      this.musicTimer = setInterval(() => {
-        if (!this.musicEnabled || !this.ctx || this.masterVolume <= 0.001) return;
-        const freq = notes[step % notes.length];
-        this.playTone(freq, 'sine', 0.35, 0.04);
-        step++;
-      }, 500);
+    finalVictoryMap25() {
+      this.stopMusic();
+      const grandChords = [
+        [523.25, 659.25, 783.99, 1046.50],
+        [587.33, 698.46, 880.00, 1174.66],
+        [659.25, 783.99, 987.77, 1318.51],
+        [783.99, 987.77, 1175.00, 1567.98]
+      ];
+      grandChords.forEach((chord, i) => {
+        setTimeout(() => {
+          chord.forEach(f => this.playTone(f, 'triangle', 0.5, 0.12));
+        }, i * 300);
+      });
     }
 
-    stopMusic() {
-      if (this.musicTimer) {
-        clearInterval(this.musicTimer);
-        this.musicTimer = null;
-      }
+    playAgainClick() {
+      this.playTone(200, 'sine', 0.4, 0.25, 800);
+    }
+
+    exitGame() {
+      this.stopMusic();
+      this.playTone(400, 'sine', 0.3, 0.18, 200);
     }
   }
 
@@ -1001,7 +1303,7 @@
 
   // --- GAME CONSTANTS & DEFINITIONS ---
   const LOGICAL_WIDTH = 360;
-  const LOGICAL_HEIGHT = 640;
+  const LOGICAL_HEIGHT = 520;
 
   // Grid Configuration for Compact Vertical 9:16 Battlefield
   const TILE_SIZE = 40;
@@ -5144,55 +5446,89 @@
     ctx.restore();
   }
 
-  // Tower Configurations
+      // Tower Configurations (4 Balanced & Powerful Tower Types)
   const TOWER_CONFIGS = {
-    archer: {
-      name: 'Archer Tower',
-      icon: '🏹',
-      cost: 100,
-      baseDamage: 1,
-      baseRange: 110,
-      fireInterval: 0.55,
-      color: '#22c55e',
-      desc: 'Rapid physical arrows'
+    lightning: {
+      name: "Lightning Tower",
+      icon: "⚡",
+      cost: 120,
+      upgradeCosts: [80, 140, 220, 340],
+      levels: [
+        { dmg: 18, rng: 130, spd: 0.80, chain: 2, title: "Lv.1 Basic Arc" },
+        { dmg: 30, rng: 140, spd: 0.65, chain: 2, title: "Lv.2 Voltage Spark" },
+        { dmg: 45, rng: 152, spd: 0.52, chain: 3, title: "Lv.3 High Voltage ⚡" },
+        { dmg: 60, rng: 165, spd: 0.42, chain: 3, title: "Lv.4 Thunder Surge" },
+        { dmg: 75, rng: 180, spd: 0.35, chain: 4, title: "Lv.5 Supercharged Arc 👑" }
+      ],
+      baseDamage: 18,
+      baseRange: 130,
+      fireInterval: 0.80,
+      chainCount: 2,
+      color: "#facc15",
+      desc: "Very fast chain electric attacks"
     },
     cannon: {
-      name: 'Cannon Tower',
-      icon: '💣',
+      name: "Cannon Tower",
+      icon: "💣",
       cost: 150,
-      baseDamage: 2,
-      baseRange: 85,
-      fireInterval: 1.3,
-      splashRadius: 42,
-      color: '#ef4444',
-      desc: 'Heavy explosive splash'
+      upgradeCosts: [100, 170, 270, 400],
+      levels: [
+        { dmg: 45, rng: 120, spd: 2.20, splash: 45, title: "Lv.1 Iron Cannon" },
+        { dmg: 80, rng: 130, spd: 1.95, splash: 50, title: "Lv.2 Bombardment" },
+        { dmg: 125, rng: 142, spd: 1.70, splash: 55, title: "Lv.3 Heavy Demolition 💥" },
+        { dmg: 170, rng: 154, spd: 1.50, splash: 60, title: "Lv.4 Devastator Shells" },
+        { dmg: 220, rng: 165, spd: 1.30, splash: 65, title: "Lv.5 Siege Mortar Blast 👑" }
+      ],
+      baseDamage: 45,
+      baseRange: 120,
+      fireInterval: 2.20,
+      splashRadius: 45,
+      color: "#ef4444",
+      desc: "Heavy explosive splash damage"
     },
-    magic: {
-      name: 'Magic Tower',
-      icon: '🔮',
-      cost: 175,
-      baseDamage: 1,
-      baseRange: 100,
-      fireInterval: 0.85,
-      slowFactor: 0.55,
-      slowDuration: 2.2,
-      color: '#8b5cf6',
-      desc: 'Frost magic slows enemies'
+    ice: {
+      name: "Ice Tower",
+      icon: "❄️",
+      cost: 100,
+      upgradeCosts: [70, 120, 190, 300],
+      levels: [
+        { dmg: 10, rng: 125, spd: 0.90, slow: 0.75, dur: 2.5, title: "Lv.1 Frost Chiller" },
+        { dmg: 20, rng: 135, spd: 0.82, slow: 0.65, dur: 2.8, title: "Lv.2 Glacial Wave" },
+        { dmg: 32, rng: 148, spd: 0.75, slow: 0.55, dur: 3.0, title: "Lv.3 Deep Frost ❄️" },
+        { dmg: 44, rng: 160, spd: 0.68, slow: 0.45, dur: 3.2, title: "Lv.4 Permafrost Aura" },
+        { dmg: 55, rng: 175, spd: 0.60, slow: 0.35, dur: 3.5, freezeStun: true, title: "Lv.5 Absolute Zero Blizzard 👑" }
+      ],
+      baseDamage: 10,
+      baseRange: 125,
+      fireInterval: 0.90,
+      slowFactor: 0.75,
+      slowDuration: 2.5,
+      color: "#38bdf8",
+      desc: "Freezing aura slows enemies"
     },
-    lightning: {
-      name: 'Lightning Tower',
-      icon: '⚡',
-      cost: 225,
-      baseDamage: 2,
-      baseRange: 115,
-      fireInterval: 1.1,
-      chainCount: 3,
-      color: '#f59e0b',
-      desc: 'Chain lightning attacks'
+    fire: {
+      name: "Fire Tower",
+      icon: "🔥",
+      cost: 130,
+      upgradeCosts: [90, 150, 240, 360],
+      levels: [
+        { dmg: 15, rng: 125, spd: 1.00, burnDmg: 5, burnDur: 3.0, title: "Lv.1 Ember Igniter" },
+        { dmg: 28, rng: 135, spd: 0.88, burnDmg: 12, burnDur: 3.2, title: "Lv.2 Blazing Fireball" },
+        { dmg: 42, rng: 148, spd: 0.75, burnDmg: 20, burnDur: 3.5, title: "Lv.3 Inferno Blaze 🔥" },
+        { dmg: 56, rng: 160, spd: 0.64, burnDmg: 28, burnDur: 3.8, title: "Lv.4 Pyroclastic Storm" },
+        { dmg: 70, rng: 170, spd: 0.55, burnDmg: 35, burnDur: 4.2, title: "Lv.5 Dragon Supernova 👑" }
+      ],
+      baseDamage: 15,
+      baseRange: 125,
+      fireInterval: 1.00,
+      burnDamage: 5,
+      burnDuration: 3.0,
+      color: "#f97316",
+      desc: "Searing flame burn damage over time"
     }
   };
 
-  // Enemy Types (Adhering to strict 2–5 HP range for normal monsters, exactly 15 HP for Boss)
+  // Enemy Types (10 Enemy Categories)
   const ENEMY_TYPES = {
     basic: {
       name: 'Goblin Scout',
@@ -5216,15 +5552,15 @@
       reward: 20,
       flying: false
     },
-    heavy: {
-      name: 'Armored Orc',
+    armored: {
+      name: 'Iron Guardian',
       color: '#64748b',
-      icon: '🐗',
+      icon: '🛡️',
       radius: 13,
       baseHp: 3,
-      speed: 0.65,
+      speed: 0.75,
       baseCastleDamage: 2,
-      reward: 35,
+      reward: 30,
       flying: false
     },
     flying: {
@@ -5237,6 +5573,64 @@
       baseCastleDamage: 1,
       reward: 30,
       flying: true
+    },
+    tank: {
+      name: 'Stone Golem',
+      color: '#475569',
+      icon: '🪨',
+      radius: 15,
+      baseHp: 5,
+      speed: 0.5,
+      baseCastleDamage: 3,
+      reward: 45,
+      flying: false
+    },
+    healer: {
+      name: 'Holy Acolyte',
+      color: '#22c55e',
+      icon: '🌾',
+      radius: 10,
+      baseHp: 3,
+      speed: 0.9,
+      baseCastleDamage: 1,
+      reward: 25,
+      flying: false,
+      isHealer: true
+    },
+    stealth: {
+      name: 'Phantom Stalker',
+      color: '#6366f1',
+      icon: '🥷',
+      radius: 9,
+      baseHp: 2,
+      speed: 1.4,
+      baseCastleDamage: 1,
+      reward: 25,
+      flying: false,
+      isStealth: true
+    },
+    swarm: {
+      name: 'Locust Swarm',
+      color: '#eab308',
+      icon: '🐝',
+      radius: 7,
+      baseHp: 1,
+      speed: 1.6,
+      baseCastleDamage: 1,
+      reward: 10,
+      flying: true
+    },
+    miniboss: {
+      name: 'Warlord Champion',
+      color: '#d97706',
+      icon: '⚔️',
+      radius: 16,
+      baseHp: 8,
+      speed: 0.6,
+      baseCastleDamage: 4,
+      reward: 100,
+      flying: false,
+      isMiniBoss: true
     },
     boss: {
       name: 'Void Behemoth',
@@ -5399,6 +5793,7 @@
       Storage.setCurrentMap(target);
       applyMapLayout(target);
       this.updateMapUI();
+      this.resizeCanvas();
     }
 
     updateMapUI() {
@@ -5646,15 +6041,28 @@
     }
 
     updateVolumeUI() {
-      const slider = document.getElementById('slider-master-volume');
-      const pct = Math.round(this.sound.masterVolume * 100);
-      if (slider) slider.value = pct;
-      const txt = document.getElementById('volume-percent-text');
-      if (txt) txt.textContent = `${pct}%`;
-      const icon = document.getElementById('volume-icon');
-      if (icon) {
-        icon.textContent = pct === 0 ? '🔇' : (pct < 50 ? '🔉' : '🔊');
-      }
+      const masterSlider = document.getElementById('slider-master-volume');
+      const musicSlider = document.getElementById('slider-music-volume');
+      const sfxSlider = document.getElementById('slider-sfx-volume');
+      const toggleMute = document.getElementById('toggle-mute-all');
+
+      const masterPct = Math.round(this.sound.masterVolume * 100);
+      const musicPct = Math.round(this.sound.musicVolume * 100);
+      const sfxPct = Math.round(this.sound.sfxVolume * 100);
+
+      if (masterSlider) masterSlider.value = masterPct;
+      if (musicSlider) musicSlider.value = musicPct;
+      if (sfxSlider) sfxSlider.value = sfxPct;
+      if (toggleMute) toggleMute.checked = this.sound.isMuted;
+
+      const txtMaster = document.getElementById('volume-percent-text');
+      if (txtMaster) txtMaster.textContent = `${masterPct}%`;
+
+      const txtMusic = document.getElementById('music-percent-text');
+      if (txtMusic) txtMusic.textContent = `${musicPct}%`;
+
+      const txtSfx = document.getElementById('sfx-percent-text');
+      if (txtSfx) txtSfx.textContent = `${sfxPct}%`;
     }
 
     applySettings() {
@@ -5821,6 +6229,14 @@
         if (targetEl.classList.contains('modal-overlay')) {
           targetEl.classList.remove('hidden');
         }
+
+        if (targetId === 'main-menu' || targetId === 'mainMenu') {
+          this.sound.startMenuMusic();
+        } else if (targetId === 'gameplay-screen' || targetId === 'gameScreen' || targetId === 'gameplayScreen') {
+          this.sound.startGameplayMusic(this.currentMapIndex, false);
+        } else if (targetId === 'exit-screen' || targetId === 'exitScreen') {
+          this.sound.exitGame();
+        }
       }
 
       if (this.menuBattle) {
@@ -5927,8 +6343,9 @@
 
       this.updateHud();
       this.showScreen('gameplay-screen');
+      this.resizeCanvas();
       this.showWaveBanner(`WAVE 1 / ${diffCfg.maxWaves}`, 'PREPARE DEFENSES!');
-      this.sound.startMusic();
+      this.sound.startGameplayMusic(this.currentMapIndex, false);
     }
 
     endMatchGameOver() {
@@ -6119,27 +6536,26 @@
 
       for (let i = 0; i < count; i++) {
         let typeKey = 'basic';
-        if (currentWave >= 2 && i % 4 === 1) typeKey = 'fast';
-        if (currentWave >= 3 && i % 5 === 2) typeKey = 'flying';
-        if (currentWave >= 4 && i % 6 === 3) typeKey = 'heavy';
+        if (currentWave >= 2 && i % 8 === 1) typeKey = 'fast';
+        if (currentWave >= 3 && i % 8 === 2) typeKey = 'flying';
+        if (currentWave >= 4 && i % 8 === 3) typeKey = 'armored';
+        if (currentWave >= 5 && i % 8 === 4) typeKey = 'tank';
+        if (currentWave >= 6 && i % 8 === 5) typeKey = 'healer';
+        if (currentWave >= 7 && i % 8 === 6) typeKey = 'stealth';
+        if (currentWave >= 8 && i % 8 === 7) typeKey = 'swarm';
+        if (currentWave >= 10 && i === Math.floor(count / 2)) typeKey = 'miniboss';
 
         // Every 5th wave contains a Void Behemoth boss (or Void Behemoth Supreme on Final Wave)
         if (isBossWave && i === count - 1) {
           typeKey = isFinalWave ? 'finalBoss' : 'boss';
         }
 
-        const cfg = ENEMY_TYPES[typeKey];
-        let calcHp = 2;
-        if (typeKey === 'basic') {
-          calcHp = (diffCfg.id === 'hard') ? 3 : 2;
-        } else if (typeKey === 'fast') {
-          calcHp = 2;
-        } else if (typeKey === 'heavy') {
-          calcHp = (diffCfg.id === 'hard') ? 4 : 3;
-        } else if (typeKey === 'flying') {
-          calcHp = (diffCfg.id === 'hard') ? 5 : 4;
-        } else if (typeKey === 'boss' || typeKey === 'finalBoss') {
+        const cfg = ENEMY_TYPES[typeKey] || ENEMY_TYPES.basic;
+        let calcHp = cfg.baseHp || 2;
+        if (typeKey === 'boss' || typeKey === 'finalBoss') {
           calcHp = 15;
+        } else if (diffCfg.id === 'hard') {
+          calcHp = Math.round(calcHp * 1.25);
         }
 
         // Gradual map progression difficulty scaling
@@ -6147,7 +6563,7 @@
           calcHp = Math.max(calcHp, Math.round(calcHp * mapHpMult));
         }
 
-        const castleDmg = (typeKey === 'boss' || typeKey === 'finalBoss') ? 5 : ((typeKey === 'heavy') ? 2 : 1);
+        const castleDmg = cfg.baseCastleDamage || 1;
 
         this.spawnQueue.push({
           type: typeKey,
@@ -6212,10 +6628,11 @@
 
     // --- CANVAS SIZING & COORDINATES ---
     resizeCanvas() {
-      const wrapper = document.querySelector('.game-wrapper');
-      if (this.canvas) {
-        const width = (wrapper && wrapper.clientWidth) ? wrapper.clientWidth : 360;
-        const height = (wrapper && wrapper.clientHeight) ? wrapper.clientHeight : 640;
+      const container = document.getElementById('canvas-container') || document.querySelector('.game-wrapper');
+      if (this.canvas && container) {
+        const rect = container.getBoundingClientRect();
+        const width = rect.width || container.clientWidth || 360;
+        const height = rect.height || container.clientHeight || 520;
         const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
 
         this.canvas.width = width * dpr;
@@ -6224,12 +6641,16 @@
         this.canvas.style.width = width + 'px';
         this.canvas.style.height = height + 'px';
 
-        // Fit 360x640 logical coordinates inside canvas aspect ratio
-        const scaleX = width / LOGICAL_WIDTH;
-        const scaleY = height / LOGICAL_HEIGHT;
+        // Fit entire 360x520 playable map inside canvas area without cropping
+        const scaleX = width / MAP_WIDTH;
+        const scaleY = height / MAP_HEIGHT;
         this.scale = Math.min(scaleX, scaleY);
-        this.offsetX = (width - LOGICAL_WIDTH * this.scale) / 2;
-        this.offsetY = (height - LOGICAL_HEIGHT * this.scale) / 2;
+        this.offsetX = (width - MAP_WIDTH * this.scale) / 2;
+        this.offsetY = (height - MAP_HEIGHT * this.scale) / 2;
+
+        this.cameraY = 0;
+        this.targetCameraY = 0;
+        this.maxCameraY = 0;
       }
 
       if (this.menuBattle) {
@@ -6382,7 +6803,32 @@
         if (e.slowTimer > 0) {
           e.slowTimer -= dt;
           if (e.slowTimer <= 0) e.slowFactor = 1;
+        } else {
+          e.slowFactor = 1;
         }
+
+        if (e.burnTimer > 0) {
+          e.burnTimer -= dt;
+          e.burnTickTimer = (e.burnTickTimer || 0) + dt;
+          if (e.burnTickTimer >= 0.5) {
+            e.burnTickTimer = 0;
+            this.damageEnemy(e, e.burnDamage || 1, null);
+          }
+        }
+
+        if (e.isHealer && e.hp > 0) {
+          e.healTimer = (e.healTimer || 0) + dt;
+          if (e.healTimer >= 2.0) {
+            e.healTimer = 0;
+            for (let other of this.enemies) {
+              if (other !== e && other.hp < other.maxHp && Math.hypot(other.x - e.x, other.y - e.y) <= 70) {
+                other.hp = Math.min(other.maxHp, other.hp + 1);
+                this.addFloatingText(other.x, other.y - 10, '+1 HP', '#22c55e');
+              }
+            }
+          }
+        }
+
         if (e.hitFlash > 0) e.hitFlash -= dt * 6;
 
         e.distance += e.speed * e.slowFactor * 60 * dt;
@@ -6659,96 +7105,78 @@
       if (tower.type === 'archer') {
         this.sound.arrowShoot();
         this.projectiles.push({
-          x: tower.x,
-          y: tower.y,
-          targetEnemy: target,
-          targetX: target.x,
-          targetY: target.y,
-          speed: 460,
-          damage: effectiveDmg,
-          type: 'archer',
-          icon: '🏹',
-          glowColor: '#22c55e',
-          life: 1.5,
-          color: '#fbbf24',
-          tower
+          x: tower.x, y: tower.y, targetEnemy: target, targetX: target.x, targetY: target.y,
+          speed: 460, damage: effectiveDmg, type: 'archer', icon: '🏹', glowColor: '#22c55e', life: 1.5, color: '#fbbf24', tower
         });
       } else if (tower.type === 'cannon') {
         this.sound.cannonShoot();
         this.projectiles.push({
-          x: tower.x,
-          y: tower.y,
-          targetEnemy: target,
-          targetX: target.x,
-          targetY: target.y,
-          speed: 300,
-          damage: effectiveDmg,
-          splashRadius: tower.splashRadius,
-          type: 'cannon',
-          icon: '💣',
-          glowColor: '#ef4444',
-          life: 1.8,
-          color: '#ef4444',
-          tower
+          x: tower.x, y: tower.y, targetEnemy: target, targetX: target.x, targetY: target.y,
+          speed: 300, damage: effectiveDmg, splashRadius: tower.splashRadius || 42, type: 'cannon', icon: '💣', glowColor: '#ef4444', life: 1.8, color: '#ef4444', tower
         });
       } else if (tower.type === 'magic') {
         this.sound.magicShoot();
         this.projectiles.push({
-          x: tower.x,
-          y: tower.y,
-          targetEnemy: target,
-          targetX: target.x,
-          targetY: target.y,
-          speed: 350,
-          damage: effectiveDmg,
-          slowFactor: tower.slowFactor,
-          slowDuration: tower.slowDuration,
-          type: 'magic',
-          icon: '🔮',
-          glowColor: '#38bdf8',
-          life: 1.5,
-          color: '#a855f7',
-          tower
+          x: tower.x, y: tower.y, targetEnemy: target, targetX: target.x, targetY: target.y,
+          speed: 350, damage: effectiveDmg, type: 'magic', icon: '🔮', glowColor: '#a855f7', life: 1.5, color: '#a855f7', tower
+        });
+      } else if (tower.type === 'ice') {
+        this.sound.magicShoot();
+        this.projectiles.push({
+          x: tower.x, y: tower.y, targetEnemy: target, targetX: target.x, targetY: target.y,
+          speed: 360, damage: effectiveDmg, slowFactor: tower.slowFactor || 0.5, slowDuration: tower.slowDuration || 2.5, type: 'ice', icon: '❄️', glowColor: '#38bdf8', life: 1.5, color: '#38bdf8', tower
+        });
+      } else if (tower.type === 'fire') {
+        this.sound.cannonShoot();
+        this.projectiles.push({
+          x: tower.x, y: tower.y, targetEnemy: target, targetX: target.x, targetY: target.y,
+          speed: 380, damage: effectiveDmg, burnDamage: tower.burnDamage || 1, burnDuration: tower.burnDuration || 3.0, type: 'fire', icon: '🔥', glowColor: '#f97316', life: 1.5, color: '#f97316', tower
         });
       } else if (tower.type === 'lightning') {
         this.sound.lightningShoot();
-        // Chain lightning targets
         const chained = [target];
         let curr = target;
-        for (let step = 1; step < tower.chainCount; step++) {
+        for (let step = 1; step < (tower.chainCount || 3); step++) {
           let nearest = null;
           let minD = 90;
           for (let e of this.enemies) {
             if (!chained.includes(e)) {
               const d = Math.hypot(e.x - curr.x, e.y - curr.y);
-              if (d < minD) {
-                minD = d;
-                nearest = e;
-              }
+              if (d < minD) { minD = d; nearest = e; }
             }
           }
-          if (nearest) {
-            chained.push(nearest);
-            curr = nearest;
-          } else break;
+          if (nearest) { chained.push(nearest); curr = nearest; } else break;
         }
-
-        // Fire flying lightning bullet ⚡ towards primary target
         this.projectiles.push({
-          x: tower.x,
-          y: tower.y,
-          targetEnemy: target,
-          targetX: target.x,
-          targetY: target.y,
-          speed: 520,
-          damage: effectiveDmg,
-          chained: chained,
-          type: 'lightning',
-          icon: '⚡',
-          glowColor: '#fef08a',
-          life: 1.4,
-          color: '#f59e0b',
-          tower
+          x: tower.x, y: tower.y, targetEnemy: target, targetX: target.x, targetY: target.y,
+          speed: 520, damage: effectiveDmg, chained: chained, type: 'lightning', icon: '⚡', glowColor: '#fef08a', life: 1.4, color: '#f59e0b', tower
+        });
+      } else if (tower.type === 'sniper') {
+        this.sound.arrowShoot();
+        let finalDmg = effectiveDmg;
+        const isCrit = Math.random() < (tower.critChance || 0.35);
+        if (isCrit) finalDmg = Math.round(finalDmg * (tower.critMultiplier || 2.5));
+        this.projectiles.push({
+          x: tower.x, y: tower.y, targetEnemy: target, targetX: target.x, targetY: target.y,
+          speed: 600, damage: finalDmg, isCrit: isCrit, type: 'sniper', icon: '🎯', glowColor: '#e11d48', life: 1.2, color: '#e11d48', tower
+        });
+      } else if (tower.type === 'missile') {
+        this.sound.cannonShoot();
+        this.projectiles.push({
+          x: tower.x, y: tower.y, targetEnemy: target, targetX: target.x, targetY: target.y,
+          speed: 320, damage: effectiveDmg, splashRadius: tower.splashRadius || 55, type: 'missile', icon: '🚀', glowColor: '#f43f5e', life: 1.8, color: '#f43f5e', tower
+        });
+      } else if (tower.type === 'laser') {
+        this.sound.magicShoot();
+        this.projectiles.push({
+          x: tower.x, y: tower.y, targetEnemy: target, targetX: target.x, targetY: target.y,
+          speed: 700, damage: effectiveDmg, type: 'laser', icon: '⚡', glowColor: '#06b6d4', life: 1.0, color: '#06b6d4', tower
+        });
+      } else if (tower.type === 'ultimate') {
+        this.sound.lightningShoot();
+        this.projectiles.push({
+          x: tower.x, y: tower.y, targetEnemy: target, targetX: target.x, targetY: target.y,
+          speed: 450, damage: effectiveDmg * 2, splashRadius: tower.splashRadius || 60, type: 'ultimate', icon: '👑', glowColor: '#fbbf24', life: 1.5, color: '#fbbf24', tower
         });
       }
     }
@@ -7072,29 +7500,50 @@
     }
 
     upgradeTower(tower) {
-      const upgradeCost = Math.round(tower.investedMoney * 0.65);
-      if (!this.spendMoney(upgradeCost)) {
-        this.addFloatingText(tower.x, tower.y - 15, 'NOT ENOUGH MONEY!', '#ef4444');
+      if (tower.level >= 5) {
+        this.addFloatingText(tower.x, tower.y - 15, 'MAX LEVEL REACHED!', '#fbbf24');
         return;
       }
 
-      this.sound.upgradeSound();
+      const cfg = TOWER_CONFIGS[tower.type];
+      if (!cfg || !cfg.upgradeCosts) return;
+
+      const upgradeCost = cfg.upgradeCosts[tower.level - 1] || 100;
+      if (!this.spendMoney(upgradeCost)) {
+        this.addFloatingText(tower.x, tower.y - 15, `NEED Rs ${upgradeCost}!`, '#ef4444');
+        return;
+      }
+
+      this.sound.upgradeSound(tower.level + 1);
       tower.level++;
       tower.investedMoney += upgradeCost;
-      tower.damage = Math.round(tower.damage * 1.45);
-      tower.range = Math.round(tower.range * 1.12);
-      tower.fireInterval = Math.max(0.2, tower.fireInterval * 0.9);
+
+      const lvlCfg = cfg.levels[tower.level - 1];
+      if (lvlCfg) {
+        tower.damage = lvlCfg.dmg;
+        tower.range = lvlCfg.rng;
+        tower.fireInterval = lvlCfg.spd;
+        if (lvlCfg.chain !== undefined) tower.chainCount = lvlCfg.chain;
+        if (lvlCfg.splash !== undefined) tower.splashRadius = lvlCfg.splash;
+        if (lvlCfg.slow !== undefined) tower.slowFactor = lvlCfg.slow;
+        if (lvlCfg.dur !== undefined) tower.slowDuration = lvlCfg.dur;
+        if (lvlCfg.burnDmg !== undefined) tower.burnDamage = lvlCfg.burnDmg;
+        if (lvlCfg.burnDur !== undefined) tower.burnDuration = lvlCfg.burnDur;
+        if (lvlCfg.freezeStun) tower.freezeStun = true;
+      }
 
       this.upgradesCount++;
       this.towersUpgraded++;
       this.syncStats();
       this.saveAll();
-      this.addFloatingText(tower.x, tower.y - 20, 'LEVEL UP!', '#10b981');
+
+      const floatMsg = tower.level === 5 ? 'MAX LEVEL! 👑' : `LEVEL ${tower.level}!`;
+      this.addFloatingText(tower.x, tower.y - 20, floatMsg, '#10b981');
       this.updateInspectorUI();
     }
 
     sellTower(tower) {
-      const refund = Math.round(tower.investedMoney * 0.7);
+      const refund = Math.floor(tower.investedMoney * 0.5);
       this.addMoney(refund);
       this.sound.coinCollect();
       this.addFloatingText(tower.x, tower.y - 15, `+Rs ${refund}`, '#fbbf24');
@@ -7121,6 +7570,7 @@
       const t = this.selectedTower;
       if (!t) return;
 
+      const cfg = TOWER_CONFIGS[t.type];
       const icon = document.getElementById('insp-icon');
       const name = document.getElementById('insp-name');
       const lvl = document.getElementById('insp-level');
@@ -7128,21 +7578,42 @@
       const rng = document.getElementById('insp-rng');
       const spd = document.getElementById('insp-spd');
       const kills = document.getElementById('insp-kills');
+      const upgBtn = document.getElementById('btn-upgrade-tower');
       const upgCost = document.getElementById('insp-upgrade-cost');
       const sellRef = document.getElementById('insp-sell-refund');
 
       if (icon) icon.textContent = t.icon;
       if (name) name.textContent = t.name;
-      if (lvl) lvl.textContent = `Level ${t.level}`;
+
+      const lvlCfg = cfg && cfg.levels ? cfg.levels[t.level - 1] : null;
+      if (lvl) lvl.textContent = lvlCfg ? lvlCfg.title : `Level ${t.level}`;
       if (dmg) dmg.textContent = t.damage.toString();
       if (rng) rng.textContent = t.range.toString();
       if (spd) spd.textContent = `${t.fireInterval.toFixed(2)}s`;
       if (kills) kills.textContent = t.kills.toString();
 
-      const cost = Math.round(t.investedMoney * 0.65);
-      const refund = Math.round(t.investedMoney * 0.7);
-      if (upgCost) upgCost.textContent = `Rs ${cost}`;
+      const refund = Math.floor(t.investedMoney * 0.5);
       if (sellRef) sellRef.textContent = `+Rs ${refund}`;
+
+      if (t.level >= 5) {
+        if (upgCost) upgCost.textContent = 'MAX';
+        if (upgBtn) {
+          upgBtn.disabled = true;
+          upgBtn.classList.add('disabled');
+        }
+      } else {
+        const nextCost = cfg.upgradeCosts[t.level - 1];
+        if (upgCost) upgCost.textContent = `Rs ${nextCost}`;
+        if (upgBtn) {
+          const hasMoney = this.money >= nextCost;
+          upgBtn.disabled = !hasMoney;
+          if (hasMoney) {
+            upgBtn.classList.remove('disabled');
+          } else {
+            upgBtn.classList.add('disabled');
+          }
+        }
+      }
     }
 
     // --- RENDER BATTLEFIELD ---
@@ -7935,6 +8406,11 @@
         }
       });
 
+      document.getElementById('btn-hud-map')?.addEventListener('click', () => {
+        this.sound.buttonClick();
+        this.openMapSelectModal();
+      });
+
       document.getElementById('btn-ingame-menu')?.addEventListener('click', () => {
         this.sound.buttonClick();
         this.saveGameData();
@@ -8027,7 +8503,18 @@
         this.showScreen('main-menu');
       });
 
-      // Settings controls: Master Volume Slider
+      // Autoplay Audio Unlock for Mobile Browsers
+      const unlockAudio = () => {
+        this.sound.init();
+        window.removeEventListener('pointerdown', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+      };
+      window.addEventListener('pointerdown', unlockAudio);
+      window.addEventListener('touchstart', unlockAudio);
+      window.addEventListener('keydown', unlockAudio);
+
+      // Settings controls: Volume Sliders & Mute Toggle
       const volSlider = document.getElementById('slider-master-volume');
       if (volSlider) {
         volSlider.value = Math.round(this.sound.masterVolume * 100);
@@ -8036,23 +8523,33 @@
           this.sound.setMasterVolume(val / 100);
           const txt = document.getElementById('volume-percent-text');
           if (txt) txt.textContent = `${val}%`;
-          const icon = document.getElementById('volume-icon');
-          if (icon) {
-            icon.textContent = val === 0 ? '🔇' : (val < 50 ? '🔉' : '🔊');
-          }
         });
       }
 
-      document.getElementById('toggle-music')?.addEventListener('change', (e) => {
-        this.settings.music = e.target.checked;
-        this.saveAll();
-        this.applySettings();
-      });
+      const musicSlider = document.getElementById('slider-music-volume');
+      if (musicSlider) {
+        musicSlider.value = Math.round(this.sound.musicVolume * 100);
+        musicSlider.addEventListener('input', (e) => {
+          const val = parseInt(e.target.value, 10);
+          this.sound.setMusicVolume(val / 100);
+          const txt = document.getElementById('music-percent-text');
+          if (txt) txt.textContent = `${val}%`;
+        });
+      }
 
-      document.getElementById('toggle-sfx')?.addEventListener('change', (e) => {
-        this.settings.sfx = e.target.checked;
-        this.saveAll();
-        this.applySettings();
+      const sfxSlider = document.getElementById('slider-sfx-volume');
+      if (sfxSlider) {
+        sfxSlider.value = Math.round(this.sound.sfxVolume * 100);
+        sfxSlider.addEventListener('input', (e) => {
+          const val = parseInt(e.target.value, 10);
+          this.sound.setSfxVolume(val / 100);
+          const txt = document.getElementById('sfx-percent-text');
+          if (txt) txt.textContent = `${val}%`;
+        });
+      }
+
+      document.getElementById('toggle-mute-all')?.addEventListener('change', (e) => {
+        this.sound.setMuteAll(e.target.checked);
       });
 
       document.querySelectorAll('#graphics-selector .btn-chip').forEach(btn => {
@@ -8514,8 +9011,9 @@
       this.updateHud();
       this.updateChallengeProgressUI();
       this.showScreen('gameplay-screen');
+      this.resizeCanvas();
       this.showWaveBanner(ch.numStr || 'CHALLENGE', ch.title);
-      this.sound.startMusic();
+      this.sound.startGameplayMusic(this.currentMapIndex, false);
     }
 
     getChallengeCurrentValue() {
