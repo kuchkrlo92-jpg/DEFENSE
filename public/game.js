@@ -741,6 +741,27 @@
     return list;
   }
 
+  // --- ACHIEVEMENTS DEFINITIONS ---
+  function getAchievementsDefinitions() {
+    return [
+      { id: 'kills_1', name: 'First Blood', desc: 'Defeat 1 Monster in battle', icon: '🏆', type: 'kills', target: 1, reward: 50 },
+      { id: 'kills_100', name: 'Monster Hunter', desc: 'Reach 100 Total Kills', icon: '⚔️', type: 'kills', target: 100, reward: 150 },
+      { id: 'kills_1000', name: 'Slayer Legend', desc: 'Reach 1,000 Total Kills', icon: '💀', type: 'kills', target: 1000, reward: 500 },
+      { id: 'kills_5000', name: 'Warlord Annihilator', desc: 'Reach 5,000 Total Kills', icon: '👹', type: 'kills', target: 5000, reward: 1500 },
+      { id: 'map_1', name: 'Realm Explorer', desc: 'Complete Map 1 – Grassland', icon: '🗺️', type: 'maps', target: 1, reward: 100 },
+      { id: 'map_5', name: 'Citadel Defender', desc: 'Complete 5 Campaign Maps', icon: '🏰', type: 'maps', target: 5, reward: 300 },
+      { id: 'map_10', name: 'Master Strategist', desc: 'Complete 10 Campaign Maps', icon: '🛡️', type: 'maps', target: 10, reward: 700 },
+      { id: 'map_25', name: 'Realm Emperor', desc: 'Complete All 25 Campaign Maps', icon: '👑', type: 'maps', target: 25, reward: 2500 },
+      { id: 'upg_lightning_5', name: 'Lightning Master', desc: 'Upgrade a Lightning Tower to Level 5', icon: '⚡', type: 'lightning_lv5', target: 1, reward: 200 },
+      { id: 'upg_cannon_5', name: 'Cannon Master', desc: 'Upgrade a Cannon Tower to Level 5', icon: '💥', type: 'cannon_lv5', target: 1, reward: 250 },
+      { id: 'upg_ice_5', name: 'Frost Master', desc: 'Upgrade an Ice Tower to Level 5', icon: '❄️', type: 'ice_lv5', target: 1, reward: 200 },
+      { id: 'upg_fire_5', name: 'Inferno Master', desc: 'Upgrade a Fire Tower to Level 5', icon: '🔥', type: 'fire_lv5', target: 1, reward: 225 },
+      { id: 'boss_10', name: 'Boss Slayer', desc: 'Defeat 10 Boss Behemoths', icon: '👹', type: 'bosses', target: 10, reward: 400 },
+      { id: 'gold_10000', name: 'Treasure Hoarder', desc: 'Earn 10,000 Total Gold', icon: '💎', type: 'gold', target: 10000, reward: 1000 },
+      { id: 'perfect_10', name: 'Flawless Guard', desc: 'Complete 10 Perfect Waves', icon: '🛡️', type: 'perfect', target: 10, reward: 350 }
+    ].map(a => Object.assign({ current: 0, completed: false, claimed: false }, a));
+  }
+
   const create100Challenges = generate100Challenges;
 
   // --- DIFFICULTY CONFIGURATION ---
@@ -1342,6 +1363,47 @@
         today: info.today,
         totalMoney: data.money
       };
+    },
+
+    // --- ACHIEVEMENTS ---
+    saveAchievements(achievements) {
+      if (!Array.isArray(achievements)) return;
+      try {
+        const minimal = achievements.map(a => ({
+          id: a.id,
+          completed: !!a.completed,
+          claimed: !!a.claimed,
+          current: a.current || 0
+        }));
+        this._setItem('vtd_achievements_data', JSON.stringify(minimal));
+        const data = this._cache || this.load();
+        data.achievements = achievements;
+        this.save(data);
+      } catch (e) {}
+    },
+
+    getAchievements() {
+      const data = this._cache || this.load();
+      const defs = getAchievementsDefinitions();
+      let saved = null;
+      try {
+        const str = this._getItem('vtd_achievements_data');
+        if (str) saved = JSON.parse(str);
+      } catch (e) {}
+
+      if (Array.isArray(saved)) {
+        const map = new Map(saved.map(s => [s.id, s]));
+        return defs.map(d => {
+          const s = map.get(d.id);
+          if (s) {
+            d.completed = !!s.completed;
+            d.claimed = !!s.claimed;
+            d.current = typeof s.current === 'number' ? s.current : d.current;
+          }
+          return d;
+        });
+      }
+      return defs;
     },
 
     // --- RESET ALL ---
@@ -5746,6 +5808,11 @@
       this.playerAvatar = this.saveData.playerPicture || Storage.getPlayerPicture();
       this.tasks = this.saveData.tasks || Storage.getTasks();
       this.challenges = this.saveData.challenges || Storage.getChallenges();
+      this.achievements = Storage.getAchievements();
+      this.hasLightningLv5 = false;
+      this.hasCannonLv5 = false;
+      this.hasIceLv5 = false;
+      this.hasFireLv5 = false;
       this.settings = this.saveData.settings || { music: true, sfx: true, quality: "medium", difficulty: "easy", masterVolume: 0.70 };
       this.difficulty = this.settings.difficulty || Storage.getDifficulty();
 
@@ -7191,9 +7258,13 @@
       for (let i = this.particles.length - 1; i >= 0; i--) {
         const pt = this.particles[i];
         pt.life -= dt;
+        if (pt.gravity) pt.vy += pt.gravity * dt;
+        if (pt.isRing && pt.maxRadius) {
+          pt.radius = (1 - (pt.life / pt.maxLife)) * pt.maxRadius;
+        }
         pt.x += pt.vx * dt;
         pt.y += pt.vy * dt;
-        pt.alpha = pt.life / pt.maxLife;
+        pt.alpha = Math.max(0, pt.life / pt.maxLife);
         if (pt.life <= 0) this.particles.splice(i, 1);
       }
 
@@ -7697,6 +7768,15 @@
 
       this.upgradesCount++;
       this.towersUpgraded++;
+
+      if (tower.level === 5) {
+        if (tower.type === 'lightning') this.hasLightningLv5 = true;
+        if (tower.type === 'cannon') this.hasCannonLv5 = true;
+        if (tower.type === 'ice') this.hasIceLv5 = true;
+        if (tower.type === 'fire') this.hasFireLv5 = true;
+        this.evaluateAchievements();
+      }
+
       this.syncStats();
       this.saveAll();
 
@@ -7709,7 +7789,41 @@
       const refund = Math.floor(tower.investedMoney * 0.5);
       this.addMoney(refund);
       this.sound.coinCollect();
-      this.addFloatingText(tower.x, tower.y - 15, `+Rs ${refund}`, '#fbbf24');
+      this.addFloatingText(tower.x, tower.y - 20, `+Rs ${refund} SOLD! 💰`, '#fbbf24');
+
+      // 1. Coin particle burst (22 golden coin sparkles with upward lift & gravity)
+      for (let i = 0; i < 22; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 30 + Math.random() * 70;
+        this.particles.push({
+          x: tower.x,
+          y: tower.y,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 35, // initial burst upward
+          gravity: 120, // realistic falling coins
+          color: i % 2 === 0 ? '#fbbf24' : '#f59e0b',
+          size: 3 + Math.random() * 3,
+          isCoin: true,
+          maxLife: 0.65,
+          life: 0.65,
+          alpha: 1
+        });
+      }
+
+      // 2. Expanding golden shockwave ring
+      this.particles.push({
+        x: tower.x,
+        y: tower.y,
+        vx: 0,
+        vy: 0,
+        radius: 4,
+        maxRadius: 38,
+        color: '#facc15',
+        isRing: true,
+        maxLife: 0.45,
+        life: 0.45,
+        alpha: 1
+      });
 
       const idx = this.towers.indexOf(tower);
       if (idx !== -1) this.towers.splice(idx, 1);
@@ -8045,6 +8159,8 @@
         const sr = this.selectedTile.row;
         const sx = sc * TILE_SIZE;
         const sy = sr * TILE_SIZE;
+        const cx = sx + 20;
+        const cy = sy + 20;
 
         const pulse = Math.sin(now * 0.008) * 3;
         ctx.fillStyle = 'rgba(251, 191, 36, 0.3)';
@@ -8057,6 +8173,36 @@
         ctx.strokeStyle = '#fef08a';
         ctx.lineWidth = 3;
         ctx.strokeRect(sx - pulse * 0.3, sy - pulse * 0.3, TILE_SIZE + pulse * 0.6, TILE_SIZE + pulse * 0.6);
+
+        // Preview Range Circle for selected tile
+        const previewType = this.selectedBuildType || 'lightning';
+        const cfg = TOWER_CONFIGS[previewType];
+        if (cfg) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+          ctx.beginPath();
+          ctx.arc(cx, cy, cfg.baseRange, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.8;
+          ctx.setLineDash([5, 4]);
+          ctx.lineDashOffset = -now * 0.015;
+          ctx.beginPath();
+          ctx.arc(cx, cy, cfg.baseRange, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillStyle = '#38bdf8';
+          ctx.strokeStyle = '#020617';
+          ctx.lineWidth = 2;
+          ctx.strokeText(`BUILD RANGE: ${cfg.baseRange}`, cx, cy - cfg.baseRange - 3);
+          ctx.fillText(`BUILD RANGE: ${cfg.baseRange}`, cx, cy - cfg.baseRange - 3);
+          ctx.restore();
+        }
       }
 
       // 6. Placed Towers
@@ -8064,20 +8210,45 @@
         ctx.save();
         ctx.translate(t.x, t.y);
 
-        // Range circle if selected
+        // Visual Range Indicator (faint circle with glowing dashed border & range badge)
         if (this.selectedTower === t) {
-          ctx.strokeStyle = 'rgba(245, 158, 11, 0.7)';
-          ctx.fillStyle = 'rgba(245, 158, 11, 0.1)';
-          ctx.lineWidth = 1.5;
+          ctx.save();
+          // Faint translucent radial fill
+          const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, t.range);
+          grad.addColorStop(0, 'rgba(245, 158, 11, 0.18)');
+          grad.addColorStop(0.8, 'rgba(245, 158, 11, 0.08)');
+          grad.addColorStop(1, 'rgba(245, 158, 11, 0.22)');
+          ctx.fillStyle = grad;
           ctx.beginPath();
           ctx.arc(0, 0, t.range, 0, Math.PI * 2);
           ctx.fill();
-          ctx.stroke();
 
-          // Selection bracket
+          // Animated dashed glowing outer boundary
           ctx.strokeStyle = '#fbbf24';
           ctx.lineWidth = 2;
-          ctx.strokeRect(-18, -18, 36, 36);
+          ctx.setLineDash([6, 4]);
+          ctx.lineDashOffset = -now * 0.015;
+          ctx.beginPath();
+          ctx.arc(0, 0, t.range, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Tactical Range Badge above top edge of range circle
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillStyle = '#fef08a';
+          ctx.strokeStyle = '#020617';
+          ctx.lineWidth = 2;
+          ctx.strokeText(`🎯 RANGE: ${Math.round(t.range)}`, 0, -t.range - 3);
+          ctx.fillText(`🎯 RANGE: ${Math.round(t.range)}`, 0, -t.range - 3);
+
+          // Selection bracket around tower base
+          const pulse = Math.sin(now * 0.008) * 2;
+          ctx.strokeStyle = '#fde047';
+          ctx.lineWidth = 2.5;
+          ctx.strokeRect(-19 - pulse * 0.5, -19 - pulse * 0.5, 38 + pulse, 38 + pulse);
+          ctx.restore();
         }
 
         // Stone Base Pedestal
@@ -8202,26 +8373,44 @@
           }
         }
 
-        // Health Bar
-        const barW = Math.max(20, e.radius * 2 + (e.isBoss ? 16 : 4));
-        const barH = e.isBoss ? 6 : 3.5;
-        const barY = -e.radius - (e.isBoss ? 15 : 6);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        // Floating Health Bar & HP Text Display
+        const barW = Math.max(22, e.radius * 2.2 + (e.isBoss ? 18 : 6));
+        const barH = e.isBoss ? 6 : 4;
+        const barY = -e.radius - (e.isBoss ? 16 : 9);
+        const hpPct = Math.max(0, Math.min(1, e.hp / e.maxHp));
+
+        // Background Track
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
         ctx.fillRect(-barW / 2, barY, barW, barH);
-        const hpPct = Math.max(0, e.hp / e.maxHp);
-        ctx.fillStyle = hpPct > 0.4 ? '#10b981' : '#ef4444';
+
+        // Fill Color Gradient based on remaining HP %
+        let hpColor = '#10b981'; // Green
+        if (hpPct <= 0.3) hpColor = '#ef4444'; // Critical Red
+        else if (hpPct <= 0.6) hpColor = '#fbbf24'; // Warning Yellow
+
+        ctx.fillStyle = e.hitFlashTimer > 0 ? '#ffffff' : hpColor;
         ctx.fillRect(-barW / 2, barY, barW * hpPct, barH);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+
+        // Border
+        ctx.strokeStyle = e.isBoss ? '#f59e0b' : 'rgba(255, 255, 255, 0.35)';
         ctx.lineWidth = 1;
         ctx.strokeRect(-barW / 2, barY, barW, barH);
 
-        // Void Behemoth Boss HP Display: BOSS HP: 15 / 15
-        if (e.isBoss) {
-          ctx.font = 'bold 9px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillStyle = '#fbbf24';
-          ctx.fillText(`BOSS HP: ${Math.max(0, Math.ceil(e.hp))} / ${e.maxHp}`, 0, barY - 4);
-        }
+        // Floating Numerical HP Text Display
+        ctx.font = e.isBoss ? 'bold 9.5px sans-serif' : 'bold 8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = e.isBoss ? '#fbbf24' : '#f8fafc';
+        
+        // Dark outline for maximum contrast against battlefield terrain
+        ctx.strokeStyle = '#020617';
+        ctx.lineWidth = 2;
+        const hpLabel = e.isBoss 
+          ? `👑 BOSS HP: ${Math.max(0, Math.ceil(e.hp))} / ${e.maxHp}` 
+          : `${Math.max(0, Math.ceil(e.hp))} / ${e.maxHp} HP`;
+          
+        ctx.strokeText(hpLabel, 0, barY - 2);
+        ctx.fillText(hpLabel, 0, barY - 2);
         ctx.restore();
       }
 
@@ -8233,11 +8422,27 @@
       // 10. Particles
       for (let pt of this.particles) {
         ctx.save();
-        ctx.globalAlpha = pt.alpha;
-        ctx.fillStyle = pt.color;
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.globalAlpha = Math.max(0, Math.min(1, pt.alpha));
+        if (pt.isRing) {
+          ctx.strokeStyle = pt.color;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, Math.max(1, pt.radius || 10), 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (pt.isCoin) {
+          ctx.fillStyle = pt.color;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#fef08a';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = pt.color;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.restore();
       }
 
@@ -8303,6 +8508,10 @@
       document.getElementById('btn-challenge')?.addEventListener('click', () => {
         this.sound.buttonClick();
         this.openChallengesScreen();
+      });
+
+      document.getElementById('btn-achievements')?.addEventListener('click', () => {
+        this.openAchievementsModal();
       });
 
       document.getElementById('btn-daily-reward')?.addEventListener('click', () => {
@@ -8916,6 +9125,143 @@
         if (removeBtn) removeBtn.classList.add('hidden');
       }
       modal?.classList.remove('hidden');
+    }
+
+    evaluateAchievements() {
+      if (!Array.isArray(this.achievements)) {
+        this.achievements = Storage.getAchievements();
+      }
+
+      const totalKills = this.totalKills || 0;
+      const mapsCompleted = Math.max(0, (Storage.getUnlockedMap() || 1) - 1);
+      const bossesDefeated = this.bossesDefeated || 0;
+      const totalGold = this.totalMoneyEarned || 0;
+      const perfectWaves = this.perfectWavesCount || 0;
+
+      let newlyUnlocked = false;
+
+      this.achievements.forEach(a => {
+        const wasCompleted = a.completed;
+        if (a.type === 'kills') a.current = totalKills;
+        else if (a.type === 'maps') a.current = mapsCompleted;
+        else if (a.type === 'bosses') a.current = bossesDefeated;
+        else if (a.type === 'gold') a.current = totalGold;
+        else if (a.type === 'perfect') a.current = perfectWaves;
+        else if (a.type === 'lightning_lv5') a.current = this.hasLightningLv5 ? 1 : 0;
+        else if (a.type === 'cannon_lv5') a.current = this.hasCannonLv5 ? 1 : 0;
+        else if (a.type === 'ice_lv5') a.current = this.hasIceLv5 ? 1 : 0;
+        else if (a.type === 'fire_lv5') a.current = this.hasFireLv5 ? 1 : 0;
+
+        if (a.current >= a.target) {
+          a.completed = true;
+          if (!wasCompleted) {
+            newlyUnlocked = true;
+            this.showAchievementToast(a.name);
+          }
+        }
+      });
+
+      if (newlyUnlocked) {
+        Storage.saveAchievements(this.achievements);
+        this.renderMenuBadges();
+      }
+    }
+
+    showAchievementToast(title) {
+      const banner = document.getElementById('achievement-toast-banner');
+      const t = document.getElementById('toast-title');
+      if (t) t.textContent = title;
+      if (banner) {
+        banner.classList.remove('hidden');
+        setTimeout(() => banner.classList.add('hidden'), 3200);
+      }
+    }
+
+    openAchievementsModal() {
+      this.sound.buttonClick();
+      this.evaluateAchievements();
+      this.renderAchievementsUI();
+      const modal = document.getElementById('achievements-modal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    renderAchievementsUI() {
+      const listEl = document.getElementById('achievements-list');
+      const titleEl = document.getElementById('achievements-title');
+      const pctEl = document.getElementById('achievements-pct-text');
+      const barEl = document.getElementById('achievements-progress-bar');
+      if (!listEl) return;
+
+      if (!Array.isArray(this.achievements)) {
+        this.achievements = Storage.getAchievements();
+      }
+
+      const total = this.achievements.length;
+      const completedCount = this.achievements.filter(a => a.completed).length;
+      const pct = Math.round((completedCount / total) * 100);
+
+      if (titleEl) titleEl.textContent = `ACHIEVEMENTS (${completedCount} / ${total})`;
+      if (pctEl) pctEl.textContent = `${pct}%`;
+      if (barEl) barEl.style.width = `${pct}%`;
+
+      listEl.innerHTML = '';
+      this.achievements.forEach(a => {
+        const card = document.createElement('div');
+        card.className = 'achievement-card';
+        if (a.completed) card.classList.add('completed');
+        if (a.claimed) card.classList.add('claimed');
+
+        const curr = Math.min(a.target, a.current || 0);
+        const itemPct = Math.round((curr / a.target) * 100);
+
+        let actionHtml = '';
+        if (a.claimed) {
+          actionHtml = `<span class="daily-card-badge" style="background:#065f46;color:#34d399;font-size:10px;padding:4px 8px;">✔ CLAIMED</span>`;
+        } else if (a.completed) {
+          actionHtml = `<button class="btn-achievement-claim" data-ach-id="${a.id}">CLAIM +Rs ${a.reward}</button>`;
+        } else {
+          actionHtml = `<span class="achievement-bar-text">${curr} / ${a.target}</span>`;
+        }
+
+        card.innerHTML = `
+          <div class="achievement-icon">${a.icon}</div>
+          <div class="achievement-info">
+            <div class="achievement-name">${a.name}</div>
+            <div class="achievement-sub">${a.desc}</div>
+            <div class="achievement-bar-row">
+              <div class="achievement-mini-bar">
+                <div class="achievement-mini-fill" style="width: ${itemPct}%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="achievement-action">${actionHtml}</div>
+        `;
+
+        listEl.appendChild(card);
+      });
+
+      listEl.querySelectorAll('.btn-achievement-claim').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const achId = e.target.getAttribute('data-ach-id');
+          this.claimAchievementReward(achId);
+        });
+      });
+    }
+
+    claimAchievementReward(achId) {
+      const ach = this.achievements.find(a => a.id === achId);
+      if (!ach || !ach.completed || ach.claimed) return;
+
+      this.sound.coinCollect();
+      ach.claimed = true;
+      this.addMoney(ach.reward);
+      Storage.saveAchievements(this.achievements);
+      this.saveAll();
+      this.updateMoneyDisplay();
+      this.renderAchievementsUI();
+      this.renderMenuBadges();
+
+      this.addFloatingText(180, 200, `+Rs ${ach.reward} REWARD! 🏅`, '#fbbf24');
     }
 
     openTasksModal() {

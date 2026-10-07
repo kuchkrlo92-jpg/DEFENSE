@@ -45,48 +45,61 @@
           </div>
         </div>
 
-        <div class="menu-hero">
+        <!-- CENTER OF MAIN MENU -->
+        <div class="menu-center-hero">
           <div class="game-logo">
             <div class="logo-shield">🏰</div>
             <h1 class="logo-title">SIEGE DEFENSE</h1>
             <p class="logo-subtitle">ENDLESS REALM GUARDIAN</p>
           </div>
+
+          <!-- LARGE CENTERED START BUTTON -->
+          <div class="menu-start-container">
+            <button id="btn-start" class="btn-start-hero">
+              <span class="btn-start-icon">⚔️</span>
+              <span class="btn-start-text">START</span>
+            </button>
+          </div>
         </div>
 
-        <div class="menu-actions">
-          <button id="btn-start" class="btn-menu btn-primary">
-            <span class="btn-icon">⚔️</span>
-            <span class="btn-text">START</span>
-          </button>
-          <button id="btn-maps" class="btn-menu btn-secondary">
-            <span class="btn-icon">🗺️</span>
-            <span class="btn-text">MAP</span>
-          </button>
-          <button id="btn-task" class="btn-menu btn-secondary">
-            <span class="btn-icon">📜</span>
-            <span class="btn-text">TASK</span>
-            <span id="task-badge" class="badge hidden">!</span>
-          </button>
-          <button id="btn-challenge" class="btn-menu btn-secondary">
-            <span class="btn-icon">🏆</span>
-            <span class="btn-text">CHALLENGE</span>
-            <span id="challenge-badge" class="badge hidden">!</span>
-          </button>
-          <button id="btn-daily-reward" class="btn-menu btn-secondary">
-            <span class="btn-icon">🎁</span>
-            <span class="btn-text">DAILY GIFT</span>
-            <span id="daily-badge" class="badge hidden">!</span>
-          </button>
-          <button id="btn-settings" class="btn-menu btn-secondary">
-            <span class="btn-icon">⚙️</span>
-            <span class="btn-text">SETTINGS</span>
-          </button>
-          <button id="btn-exit" class="btn-menu btn-danger">
-            <span class="btn-icon">🚪</span>
-            <span class="btn-text">EXIT</span>
-          </button>
+        <!-- FIXED BOTTOM FOOTER BUTTONS -->
+        <div class="menu-footer-bar">
+          <div class="footer-buttons-grid">
+            <button id="btn-maps" class="btn-footer">
+              <span class="btn-icon">🗺️</span>
+              <span class="btn-text">MAP</span>
+            </button>
+            <button id="btn-task" class="btn-footer">
+              <span class="btn-icon">📜</span>
+              <span class="btn-text">TASK</span>
+              <span id="task-badge" class="badge hidden">!</span>
+            </button>
+            <button id="btn-challenge" class="btn-footer">
+              <span class="btn-icon">🏆</span>
+              <span class="btn-text">CHALLENGE</span>
+              <span id="challenge-badge" class="badge hidden">!</span>
+            </button>
+            <button id="btn-achievements" class="btn-footer">
+              <span class="btn-icon">🏅</span>
+              <span class="btn-text">ACHIEVE</span>
+              <span id="achievements-badge" class="badge hidden">!</span>
+            </button>
+            <button id="btn-daily-reward" class="btn-footer">
+              <span class="btn-icon">🎁</span>
+              <span class="btn-text">DAILY GIFT</span>
+              <span id="daily-badge" class="badge hidden">!</span>
+            </button>
+            <button id="btn-settings" class="btn-footer">
+              <span class="btn-icon">⚙️</span>
+              <span class="btn-text">SETTINGS</span>
+            </button>
+            <button id="btn-exit" class="btn-footer btn-footer-exit">
+              <span class="btn-icon">🚪</span>
+              <span class="btn-text">EXIT</span>
+            </button>
+          </div>
+          <div class="menu-footer">100% Offline Game • Endless Realm Guardian</div>
         </div>
-        <div class="menu-footer">100% Offline Game • Endless Realm Guardian</div>
       </div>
     </div>
 
@@ -380,6 +393,48 @@
         <div class="modal-footer">
           <button class="btn-secondary full-width" data-close="challenges-modal">CLOSE</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ACHIEVEMENTS MODAL -->
+    <div id="achievements-modal" class="modal-overlay hidden">
+      <div class="modal-card modal-large achievements-card">
+        <div class="modal-header">
+          <div class="modal-title-row">
+            <span class="modal-icon">🏅</span>
+            <span id="achievements-title" class="modal-title">ACHIEVEMENTS (0 / 15)</span>
+          </div>
+          <button class="modal-close" data-close="achievements-modal" title="Close">✕</button>
+        </div>
+        <p class="achievements-desc">Complete heroic milestones to earn bonus gold rewards and glory!</p>
+        
+        <div class="achievements-progress-banner">
+          <div class="achievements-progress-labels">
+            <span>Overall Progress</span>
+            <span id="achievements-pct-text">0%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div id="achievements-progress-bar" class="progress-bar-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="modal-content scrollable">
+          <div id="achievements-list" class="items-list">
+            <!-- Dynamic achievements rendered here -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary full-width" data-close="achievements-modal">CLOSE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Achievement Toast Banner -->
+    <div id="achievement-toast-banner" class="achievement-toast-banner hidden">
+      <div class="toast-icon">🏆</div>
+      <div class="toast-info">
+        <div class="toast-tag">ACHIEVEMENT UNLOCKED!</div>
+        <div id="toast-title" class="toast-title">Slayer Legend</div>
       </div>
     </div>
 
