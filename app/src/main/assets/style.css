@@ -2638,6 +2638,121 @@ button, .btn-menu, .btn-primary, .btn-secondary, .btn-danger,
   }
 }
 
+/* Daily Login Reward Modal */
+.daily-reward-card {
+  max-width: 440px;
+  width: 90%;
+  padding: 18px;
+  background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0b0f19 100%);
+  border: 1.5px solid var(--border-gold);
+  border-radius: 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85);
+}
+
+.daily-reward-subtitle {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.daily-rewards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.daily-card {
+  background: #1e293b;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  text-align: center;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.daily-card.jackpot {
+  grid-column: span 2;
+  background: linear-gradient(135deg, #451a03 0%, #78350f 100%);
+  border-color: #f59e0b;
+}
+
+.daily-card.active {
+  border-color: #fbbf24;
+  background: linear-gradient(180deg, #1e293b 0%, #312e81 100%);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.4);
+  transform: scale(1.04);
+}
+
+.daily-card.claimed {
+  opacity: 0.65;
+  border-color: #10b981;
+  background: #0f172a;
+}
+
+.daily-card-day {
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.daily-card.active .daily-card-day {
+  color: #fbbf24;
+}
+
+.daily-card-icon {
+  font-size: 22px;
+  margin: 4px 0;
+}
+
+.daily-card-reward {
+  font-size: 11px;
+  font-weight: 900;
+  color: #f8fafc;
+}
+
+.daily-card.active .daily-card-reward {
+  color: #fbbf24;
+}
+
+.daily-card-badge {
+  font-size: 8px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 8px;
+  margin-top: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+.daily-card.claimed .daily-card-badge {
+  background: #065f46;
+  color: #34d399;
+}
+
+.daily-card.active .daily-card-badge {
+  background: #b45309;
+  color: #fef08a;
+  animation: pulseReady 1.2s infinite alternate;
+}
+
+@keyframes pulseReady {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
+}
+
+.daily-reward-footer {
+  display: flex;
+  justify-content: center;
+}
+
 .hidden {
   display: none !important;
 }

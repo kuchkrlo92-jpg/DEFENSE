@@ -72,6 +72,11 @@
             <span class="btn-text">CHALLENGE</span>
             <span id="challenge-badge" class="badge hidden">!</span>
           </button>
+          <button id="btn-daily-reward" class="btn-menu btn-secondary">
+            <span class="btn-icon">🎁</span>
+            <span class="btn-text">DAILY GIFT</span>
+            <span id="daily-badge" class="badge hidden">!</span>
+          </button>
           <button id="btn-settings" class="btn-menu btn-secondary">
             <span class="btn-icon">⚙️</span>
             <span class="btn-text">SETTINGS</span>
@@ -622,6 +627,28 @@
         <div class="result-actions">
           <button id="btn-retry-challenge" class="btn-primary full-width">RETRY</button>
           <button id="btn-back-challenges-from-fail" class="btn-secondary full-width">BACK TO CHALLENGES</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DAILY LOGIN REWARD MODAL -->
+    <div id="daily-reward-modal" class="modal-overlay hidden">
+      <div class="modal-card daily-reward-card">
+        <div class="modal-header">
+          <div class="modal-title-row">
+            <span class="modal-icon">🎁</span>
+            <span class="modal-title">DAILY LOGIN REWARD</span>
+          </div>
+          <button id="btn-close-daily-reward" class="modal-close" title="Close">✕</button>
+        </div>
+        <div class="daily-reward-subtitle">Log in daily to maintain your streak and claim bigger gold rewards!</div>
+        
+        <div id="daily-rewards-grid" class="daily-rewards-grid">
+          <!-- Dynamically populated 7-day cards -->
+        </div>
+
+        <div class="daily-reward-footer">
+          <button id="btn-claim-daily" class="btn-primary full-width">🎁 CLAIM TODAY'S REWARD</button>
         </div>
       </div>
     </div>

@@ -1280,6 +1280,70 @@
       };
     },
 
+    // --- DAILY LOGIN REWARDS ---
+    getDailyRewardInfo() {
+      const data = this._cache || this.load();
+      const lastLoginDate = data?.lastLoginDate || '';
+      let loginStreak = typeof data?.loginStreak === 'number' ? data.loginStreak : 0;
+      
+      const today = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+      
+      let claimedToday = false;
+      if (lastLoginDate === today) {
+        claimedToday = !!data?.dailyClaimedToday;
+      } else {
+        if (lastLoginDate) {
+          const lastTime = new Date(lastLoginDate).getTime();
+          const currTime = new Date(today).getTime();
+          const diffDays = Math.round((currTime - lastTime) / (1000 * 3600 * 24));
+          
+          if (diffDays === 1) {
+            // Consecutive day login -> streak continues
+          } else if (diffDays > 1) {
+            // Missed a day -> reset streak to 0
+            loginStreak = 0;
+          }
+        } else {
+          loginStreak = 0;
+        }
+      }
+
+      const nextStreak = claimedToday ? loginStreak : (loginStreak % 7) + 1;
+
+      return {
+        lastLoginDate,
+        loginStreak,
+        nextStreak,
+        claimedToday,
+        today
+      };
+    },
+
+    claimDailyReward() {
+      const info = this.getDailyRewardInfo();
+      if (info.claimedToday) return null;
+
+      const rewards = [150, 250, 400, 600, 850, 1200, 2000];
+      const targetStreak = (info.loginStreak % 7) + 1;
+      const amount = rewards[targetStreak - 1];
+
+      const data = this._cache || this.load();
+      data.lastLoginDate = info.today;
+      data.loginStreak = targetStreak;
+      data.dailyClaimedToday = true;
+      data.money = (typeof data.money === 'number' ? data.money : 0) + amount;
+      data.totalMoneyEarned = (typeof data.totalMoneyEarned === 'number' ? data.totalMoneyEarned : 0) + amount;
+
+      this.save(data);
+
+      return {
+        streak: targetStreak,
+        amount,
+        today: info.today,
+        totalMoney: data.money
+      };
+    },
+
     // --- RESET ALL ---
     resetAll() {
       const keys = [
@@ -5815,6 +5879,98 @@
       if (modal) modal.classList.add('hidden');
     }
 
+    openDailyRewardModal() {
+      this.sound.buttonClick();
+      this.renderDailyRewardUI();
+      const modal = document.getElementById('daily-reward-modal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    closeDailyRewardModal() {
+      this.sound.buttonClick();
+      const modal = document.getElementById('daily-reward-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    renderDailyRewardUI() {
+      const grid = document.getElementById('daily-rewards-grid');
+      const claimBtn = document.getElementById('btn-claim-daily');
+      const badge = document.getElementById('daily-badge');
+      if (!grid) return;
+
+      const info = Storage.getDailyRewardInfo();
+      const rewards = [150, 250, 400, 600, 850, 1200, 2000];
+
+      grid.innerHTML = '';
+      rewards.forEach((amt, idx) => {
+        const dayNum = idx + 1;
+        const card = document.createElement('div');
+        card.className = 'daily-card';
+        if (dayNum === 7) card.classList.add('jackpot');
+
+        let statusText = `Day ${dayNum}`;
+        let icon = dayNum === 7 ? '👑' : (dayNum >= 4 ? '🎁' : '🪙');
+
+        if (info.claimedToday) {
+          if (dayNum <= info.loginStreak) {
+            card.classList.add('claimed');
+            statusText = '✔ CLAIMED';
+          }
+        } else {
+          if (dayNum < info.nextStreak) {
+            card.classList.add('claimed');
+            statusText = '✔ CLAIMED';
+          } else if (dayNum === info.nextStreak) {
+            card.classList.add('active');
+            statusText = '⚡ READY!';
+          }
+        }
+
+        card.innerHTML = `
+          <div class="daily-card-day">DAY ${dayNum}</div>
+          <div class="daily-card-icon">${icon}</div>
+          <div class="daily-card-reward">+Rs ${amt}</div>
+          <div class="daily-card-badge">${statusText}</div>
+        `;
+        grid.appendChild(card);
+      });
+
+      if (badge) {
+        if (!info.claimedToday) badge.classList.remove('hidden');
+        else badge.classList.add('hidden');
+      }
+
+      if (claimBtn) {
+        if (info.claimedToday) {
+          claimBtn.disabled = true;
+          claimBtn.classList.add('disabled');
+          claimBtn.textContent = '✔ CLAIMED TODAY';
+        } else {
+          const nextAmt = rewards[info.nextStreak - 1];
+          claimBtn.disabled = false;
+          claimBtn.classList.remove('disabled');
+          claimBtn.textContent = `🎁 CLAIM DAY ${info.nextStreak} (+Rs ${nextAmt})`;
+        }
+      }
+    }
+
+    claimDailyRewardAction() {
+      const res = Storage.claimDailyReward();
+      if (!res) return;
+
+      this.sound.coinCollect();
+      this.money = res.totalMoney;
+      this.saveData.money = this.money;
+      this.saveGameData();
+      this.updateMoneyDisplay();
+
+      // Show floating reward text
+      this.addFloatingText(180, 200, `+Rs ${res.amount} DAILY REWARD! 🎁`, '#fbbf24');
+
+      this.renderDailyRewardUI();
+      this.renderMenuBadges();
+    }
+
     renderMapSelectModal() {
       const container = document.getElementById('map-grid-container');
       if (!container) return;
@@ -6163,6 +6319,13 @@
       if (cb) {
         cb.classList.toggle('hidden', claimableChs === 0);
         cb.textContent = claimableChs.toString();
+      }
+
+      const dailyInfo = Storage.getDailyRewardInfo();
+      const db = document.getElementById('daily-badge');
+      if (db) {
+        db.classList.toggle('hidden', dailyInfo.claimedToday);
+        db.textContent = '!';
       }
     }
 
@@ -8140,6 +8303,18 @@
       document.getElementById('btn-challenge')?.addEventListener('click', () => {
         this.sound.buttonClick();
         this.openChallengesScreen();
+      });
+
+      document.getElementById('btn-daily-reward')?.addEventListener('click', () => {
+        this.openDailyRewardModal();
+      });
+
+      document.getElementById('btn-close-daily-reward')?.addEventListener('click', () => {
+        this.closeDailyRewardModal();
+      });
+
+      document.getElementById('btn-claim-daily')?.addEventListener('click', () => {
+        this.claimDailyRewardAction();
       });
 
       // Challenges Screen Navigation & Modals
