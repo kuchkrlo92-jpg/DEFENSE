@@ -30,41 +30,55 @@
       <!-- Static fantasy stone background styled via CSS -->
       <div class="menu-content-layer">
         <div class="menu-top-bar">
-          <div class="player-profile-badge" id="btn-open-profile" title="Player Profile">
-            <div class="avatar-frame">
-              <img id="menu-avatar-img" src="" alt="Avatar" class="avatar-img hidden" />
-              <div id="menu-avatar-fallback" class="avatar-fallback">👤</div>
+          <div class="top-left-group">
+            <div class="player-profile-badge" id="btn-open-profile" title="Player Profile">
+              <div class="avatar-frame">
+                <img id="menu-avatar-img" src="" alt="Avatar" class="avatar-img hidden" />
+                <div id="menu-avatar-fallback" class="avatar-fallback">👤</div>
+              </div>
+              <div class="player-info">
+                <span id="menu-player-name" class="player-name">Your Player</span>
+              </div>
             </div>
-            <div class="player-info">
-              <span id="menu-player-name" class="player-name">Your Player</span>
+            <!-- Side-by-side circular buttons below player profile -->
+            <div class="top-circular-buttons">
+              <button id="btn-achievements" class="btn-circle-top" title="Achievements">
+                <span class="btn-icon">🏅</span>
+                <span id="achievements-badge" class="badge hidden">!</span>
+              </button>
+              <button id="btn-settings" class="btn-circle-top" title="Settings">
+                <span class="btn-icon">⚙️</span>
+              </button>
             </div>
           </div>
-          <div class="currency-badge">
-            <span class="currency-icon">💰</span>
-            <span id="menu-money-display" class="currency-amount">Rs 0</span>
+
+          <div class="top-right-group">
+            <div class="currency-badge">
+              <span class="currency-icon">💰</span>
+              <span id="menu-money-display" class="currency-amount">Rs 0</span>
+            </div>
+            <!-- Circular DAILY GIFT button directly below Money display -->
+            <div class="top-right-circular-buttons">
+              <button id="btn-daily-reward" class="btn-circle-top btn-circle-gift" title="Daily Gift">
+                <span class="btn-icon">🎁</span>
+                <span id="daily-badge" class="badge hidden">!</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- CENTER OF MAIN MENU -->
+        <!-- CENTER OF MAIN MENU (ONLY LOGO NOW) -->
         <div class="menu-center-hero">
           <div class="game-logo">
             <div class="logo-shield">🏰</div>
             <h1 class="logo-title">SIEGE DEFENSE</h1>
             <p class="logo-subtitle">ENDLESS REALM GUARDIAN</p>
           </div>
-
-          <!-- LARGE CENTERED START BUTTON -->
-          <div class="menu-start-container">
-            <button id="btn-start" class="btn-start-hero">
-              <span class="btn-start-icon">⚔️</span>
-              <span class="btn-start-text">START</span>
-            </button>
-          </div>
         </div>
 
-        <!-- FIXED BOTTOM FOOTER BUTTONS -->
+        <!-- FLOATING BOTTOM NAVIGATION ROW (NO RECTANGULAR CONTAINER/BACKGROUND) -->
         <div class="menu-footer-bar">
-          <div class="footer-buttons-grid">
+          <div class="footer-buttons-row">
             <button id="btn-maps" class="btn-footer">
               <span class="btn-icon">🗺️</span>
               <span class="btn-text">MAP</span>
@@ -74,24 +88,14 @@
               <span class="btn-text">TASK</span>
               <span id="task-badge" class="badge hidden">!</span>
             </button>
+            <button id="btn-start" class="btn-footer-start">
+              <span class="btn-start-icon">⚔️</span>
+              <span class="btn-start-text">START</span>
+            </button>
             <button id="btn-challenge" class="btn-footer">
               <span class="btn-icon">🏆</span>
               <span class="btn-text">CHALLENGE</span>
               <span id="challenge-badge" class="badge hidden">!</span>
-            </button>
-            <button id="btn-achievements" class="btn-footer">
-              <span class="btn-icon">🏅</span>
-              <span class="btn-text">ACHIEVE</span>
-              <span id="achievements-badge" class="badge hidden">!</span>
-            </button>
-            <button id="btn-daily-reward" class="btn-footer">
-              <span class="btn-icon">🎁</span>
-              <span class="btn-text">DAILY GIFT</span>
-              <span id="daily-badge" class="badge hidden">!</span>
-            </button>
-            <button id="btn-settings" class="btn-footer">
-              <span class="btn-icon">⚙️</span>
-              <span class="btn-text">SETTINGS</span>
             </button>
             <button id="btn-exit" class="btn-footer btn-footer-exit">
               <span class="btn-icon">🚪</span>
@@ -484,6 +488,20 @@
                 <span style="font-weight: 700;">🔇 MUTE ALL AUDIO</span>
                 <label class="switch switch-sm">
                   <input type="checkbox" id="toggle-mute-all" />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="subtoggle-item" style="margin-top: 8px;">
+                <span style="font-weight: 700;">🎵 MUSIC ON</span>
+                <label class="switch switch-sm">
+                  <input type="checkbox" id="toggle-music-on" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="subtoggle-item" style="margin-top: 8px;">
+                <span style="font-weight: 700;">🔊 SOUND EFFECTS ON</span>
+                <label class="switch switch-sm">
+                  <input type="checkbox" id="toggle-sfx-on" checked />
                   <span class="slider"></span>
                 </label>
               </div>

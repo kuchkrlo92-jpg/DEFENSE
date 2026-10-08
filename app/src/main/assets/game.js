@@ -12,16 +12,21 @@
       this.masterGain = null;
       this.sfxGain = null;
       this.musicGain = null;
+      this.compressor = null;
 
       const savedMaster = localStorage.getItem('vtd_master_volume');
       const savedMusic = localStorage.getItem('vtd_music_volume');
       const savedSfx = localStorage.getItem('vtd_sfx_volume');
       const savedMute = localStorage.getItem('vtd_muted');
+      const savedMusicOn = localStorage.getItem('vtd_music_on');
+      const savedSfxOn = localStorage.getItem('vtd_sfx_on');
 
-      this.masterVolume = savedMaster !== null ? Math.max(0, Math.min(1, parseFloat(savedMaster))) : 0.70;
-      this.musicVolume = savedMusic !== null ? Math.max(0, Math.min(1, parseFloat(savedMusic))) : 0.80;
-      this.sfxVolume = savedSfx !== null ? Math.max(0, Math.min(1, parseFloat(savedSfx))) : 0.85;
+      this.masterVolume = savedMaster !== null ? Math.max(0, Math.min(1, parseFloat(savedMaster))) : 0.80;
+      this.musicVolume = savedMusic !== null ? Math.max(0, Math.min(1, parseFloat(savedMusic))) : 0.85;
+      this.sfxVolume = savedSfx !== null ? Math.max(0, Math.min(1, parseFloat(savedSfx))) : 0.90;
       this.isMuted = savedMute === 'true';
+      this.musicOn = savedMusicOn !== 'false';
+      this.sfxOn = savedSfxOn !== 'false';
 
       this.musicTimer = null;
       this.currentTrackType = null;
@@ -37,9 +42,18 @@
           this.masterGain = this.ctx.createGain();
           this.sfxGain = this.ctx.createGain();
           this.musicGain = this.ctx.createGain();
+          
+          // Professional Dynamics Compressor to maximize loudness without digital clipping/distortion
+          this.compressor = this.ctx.createDynamicsCompressor();
+          this.compressor.threshold.setValueAtTime(-12, this.ctx.currentTime);
+          this.compressor.knee.setValueAtTime(30, this.ctx.currentTime);
+          this.compressor.ratio.setValueAtTime(12, this.ctx.currentTime);
+          this.compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
+          this.compressor.release.setValueAtTime(0.25, this.ctx.currentTime);
 
-          this.sfxGain.connect(this.masterGain);
-          this.musicGain.connect(this.masterGain);
+          this.sfxGain.connect(this.compressor);
+          this.musicGain.connect(this.compressor);
+          this.compressor.connect(this.masterGain);
           this.masterGain.connect(this.ctx.destination);
 
           this.updateGains();
@@ -58,8 +72,12 @@
       const effectiveMaster = this.isMuted ? 0 : this.masterVolume;
       const now = this.ctx.currentTime;
       this.masterGain.gain.setValueAtTime(effectiveMaster, now);
-      this.sfxGain.gain.setValueAtTime(this.sfxVolume, now);
-      this.musicGain.gain.setValueAtTime(this.musicVolume, now);
+      
+      const effectiveMusic = this.musicOn ? this.musicVolume : 0;
+      const effectiveSfx = this.sfxOn ? this.sfxVolume : 0;
+      
+      this.sfxGain.gain.setValueAtTime(effectiveSfx, now);
+      this.musicGain.gain.setValueAtTime(effectiveMusic, now);
     }
 
     setMasterVolume(val) {
@@ -86,6 +104,18 @@
       this.updateGains();
     }
 
+    setMusicOn(on) {
+      this.musicOn = !!on;
+      localStorage.setItem('vtd_music_on', this.musicOn.toString());
+      this.updateGains();
+    }
+
+    setSfxOn(on) {
+      this.sfxOn = !!on;
+      localStorage.setItem('vtd_sfx_on', this.sfxOn.toString());
+      this.updateGains();
+    }
+
     // Sound Throttling to prevent audio buffer saturation
     isThrottled(soundKey, minIntervalMs = 70) {
       const now = Date.now();
@@ -96,7 +126,7 @@
     }
 
     playTone(freq, type, duration, vol = 0.2, freqEnd = null, targetGainNode = null) {
-      if (this.isMuted || this.masterVolume <= 0.001) return;
+      if (this.isMuted || this.masterVolume <= 0.001 || !this.sfxOn) return;
       this.init();
       if (!this.ctx || !this.sfxGain) return;
       try {
@@ -6278,6 +6308,11 @@
       if (sfxSlider) sfxSlider.value = sfxPct;
       if (toggleMute) toggleMute.checked = this.sound.isMuted;
 
+      const toggleMusicOn = document.getElementById('toggle-music-on');
+      const toggleSfxOn = document.getElementById('toggle-sfx-on');
+      if (toggleMusicOn) toggleMusicOn.checked = this.sound.musicOn;
+      if (toggleSfxOn) toggleSfxOn.checked = this.sound.sfxOn;
+
       const txtMaster = document.getElementById('volume-percent-text');
       if (txtMaster) txtMaster.textContent = `${masterPct}%`;
 
@@ -8480,15 +8515,31 @@
     }
 
     // --- USER INTERACTION ---
+    activateFooterButton(id) {
+      const footerButtons = ['btn-maps', 'btn-task', 'btn-start', 'btn-challenge', 'btn-exit'];
+      footerButtons.forEach(btnId => {
+        const el = document.getElementById(btnId);
+        if (el) {
+          if (btnId === id) {
+            el.classList.add('active-nav');
+          } else {
+            el.classList.remove('active-nav');
+          }
+        }
+      });
+    }
+
     setupDOM() {
       // Menu Navigation
       document.getElementById('btn-start')?.addEventListener('click', () => {
         this.sound.buttonClick();
+        this.activateFooterButton('btn-start');
         this.startMatch();
       });
 
       // Map selection button & modal
       document.getElementById('btn-maps')?.addEventListener('click', () => {
+        this.activateFooterButton('btn-maps');
         this.openMapSelectModal();
       });
 
@@ -8502,11 +8553,13 @@
 
       document.getElementById('btn-task')?.addEventListener('click', () => {
         this.sound.buttonClick();
+        this.activateFooterButton('btn-task');
         this.openTasksModal();
       });
 
       document.getElementById('btn-challenge')?.addEventListener('click', () => {
         this.sound.buttonClick();
+        this.activateFooterButton('btn-challenge');
         this.openChallengesScreen();
       });
 
@@ -8573,6 +8626,7 @@
       });
 
       document.getElementById('btn-exit')?.addEventListener('click', () => {
+        this.activateFooterButton('btn-exit');
         this.openExitScreen();
       });
 
@@ -8934,6 +8988,14 @@
 
       document.getElementById('toggle-mute-all')?.addEventListener('change', (e) => {
         this.sound.setMuteAll(e.target.checked);
+      });
+
+      document.getElementById('toggle-music-on')?.addEventListener('change', (e) => {
+        this.sound.setMusicOn(e.target.checked);
+      });
+
+      document.getElementById('toggle-sfx-on')?.addEventListener('change', (e) => {
+        this.sound.setSfxOn(e.target.checked);
       });
 
       document.querySelectorAll('#graphics-selector .btn-chip').forEach(btn => {
