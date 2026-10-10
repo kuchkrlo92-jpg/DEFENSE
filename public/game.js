@@ -934,7 +934,15 @@
         bossesDefeated: 0,
         totalMoneyEarned: 0,
         perfectWavesCount: 0,
-        speedWavesCount: 0
+        speedWavesCount: 0,
+        researchUpgrades: { // Persistent upgrades
+          archerDmg: 0,
+          archerSpd: 0,
+          cannonDmg: 0,
+          cannonRng: 0,
+          magicDmg: 0,
+          lightningDmg: 0
+        }
       };
       this.save(initialData);
       return initialData;
@@ -5884,11 +5892,18 @@
       this.particles = [];
       this.floatingTexts = [];
       this.lightningArcs = [];
+      this.weather = []; // Weather particles array
 
       // Wave Spawner State
       this.spawnQueue = [];
       this.spawnInterval = 0.8;
       this.spawnTimer = 0;
+
+      // Weather System State
+      this.weatherState = 'clear'; // clear, storm, rain
+      this.weatherTimer = 0;
+      this.weatherDuration = 30; // seconds
+      this.weatherMultiplier = 1; // multiplier for enemy speed
 
       // Selection & Grid
       this.selectedTile = null;
@@ -5989,6 +6004,19 @@
       if (modal) modal.classList.add('hidden');
     }
 
+    openResearchModal() {
+      this.sound.buttonClick();
+      this.renderResearchUI();
+      const modal = document.getElementById('research-modal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    closeResearchModal() {
+      this.sound.buttonClick();
+      const modal = document.getElementById('research-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
     renderDailyRewardUI() {
       const grid = document.getElementById('daily-rewards-grid');
       const claimBtn = document.getElementById('btn-claim-daily');
@@ -6048,6 +6076,49 @@
           claimBtn.classList.remove('disabled');
           claimBtn.textContent = `🎁 CLAIM DAY ${info.nextStreak} (+Rs ${nextAmt})`;
         }
+      }
+    }
+
+    renderResearchUI() {
+      const list = document.getElementById('research-list');
+      if (!list) return;
+      list.innerHTML = '';
+
+      const upgrades = [
+        { id: 'archerDmg', name: 'Archer Damage', desc: 'Increases archer arrow damage', cost: 100 },
+        { id: 'archerSpd', name: 'Archer Speed', desc: 'Increases archer fire rate', cost: 150 },
+        { id: 'cannonDmg', name: 'Cannon Damage', desc: 'Increases cannon blast damage', cost: 200 },
+        { id: 'cannonRng', name: 'Cannon Range', desc: 'Increases cannon explosion range', cost: 250 },
+        { id: 'magicDmg', name: 'Magic Damage', desc: 'Increases magic beam damage', cost: 300 },
+        { id: 'lightningDmg', name: 'Lightning Dmg', desc: 'Increases lightning arc damage', cost: 400 }
+      ];
+
+      upgrades.forEach(upg => {
+        const level = this.saveData.researchUpgrades[upg.id];
+        const item = document.createElement('div');
+        item.className = 'research-item';
+        item.innerHTML = `
+          <div class="research-info">
+            <div class="research-title">${upg.name} (Lvl ${level})</div>
+            <div class="research-desc">${upg.desc}</div>
+          </div>
+          <button class="btn-primary" data-id="${upg.id}" ${this.money < upg.cost ? 'disabled' : ''}>
+            Rs ${upg.cost}
+          </button>
+        `;
+        item.querySelector('button').onclick = () => this.buyResearch(upg.id, upg.cost);
+        list.appendChild(item);
+      });
+    }
+
+    buyResearch(id, cost) {
+      if (this.money >= cost) {
+        this.spendMoney(cost);
+        this.saveData.researchUpgrades[id]++;
+        Storage.save(this.saveData);
+        this.sound.buttonClick();
+        this.renderResearchUI();
+        this.updateMoneyDisplay();
       }
     }
 
@@ -6784,15 +6855,16 @@
       // Basic enemy baseline health based on difficulty:
       // EASY: 3 HP, NORMAL: 4 HP, HARD: 5 HP
       const baseHp = diffCfg.basicEnemyHp || 3;
-      const waveHpScale = Math.floor((currentWave - 1) / (diffCfg.id === 'easy' ? 18 : (diffCfg.id === 'normal' ? 14 : 10)));
+      // Exponential-like scaling for HP: base + level * 0.8 + level^2 * 0.03
+      const waveHpScale = Math.floor((currentWave - 1) * 0.8 + Math.pow(currentWave - 1, 2) * 0.03);
       const basicEnemyHealth = baseHp + waveHpScale;
 
       const count = diffCfg.id === 'easy' 
-        ? Math.min(24, 4 + Math.floor(currentWave * 0.35))
+        ? Math.min(40, 5 + Math.floor(currentWave * 0.6))
         : (diffCfg.id === 'normal'
-            ? Math.min(32, 5 + Math.floor(currentWave * 0.45))
-            : Math.min(45, 7 + Math.floor(currentWave * 0.55)));
-      const spdMultiplier = Math.min(1.22, 1 + (currentWave - 1) * 0.008) * diffCfg.enemySpeedMultiplier;
+            ? Math.min(60, 8 + Math.floor(currentWave * 0.9))
+            : Math.min(80, 10 + Math.floor(currentWave * 1.2)));
+      const spdMultiplier = Math.min(1.5, 1 + (currentWave - 1) * 0.012) * diffCfg.enemySpeedMultiplier;
 
       const mapDef = this.getCurrentMapDef();
       const mapHpMult = mapDef.hpMultiplier || 1.0;
@@ -6816,10 +6888,17 @@
         }
 
         const cfg = ENEMY_TYPES[typeKey] || ENEMY_TYPES.basic;
-        let calcHp = cfg.baseHp || 2;
+        
+        // Use basicEnemyHealth as the new base for scaling
+        let calcHp = (typeKey === 'basic' || typeKey === 'fast' || typeKey === 'swarm') ? basicEnemyHealth : (cfg.baseHp || 2);
+        
         if (typeKey === 'boss' || typeKey === 'finalBoss') {
-          calcHp = 15;
-        } else if (diffCfg.id === 'hard') {
+          calcHp = 15 + Math.floor(currentWave * 2); // Bosses scale with wave
+        } else if (typeKey !== 'basic' && typeKey !== 'fast' && typeKey !== 'swarm') {
+          calcHp = Math.round(calcHp * (1 + (currentWave - 1) * 0.15)); // Other special enemies scale
+        }
+        
+        if (diffCfg.id === 'hard') {
           calcHp = Math.round(calcHp * 1.25);
         }
 
@@ -6990,6 +7069,7 @@
         const gameDt = dt * this.gameSpeed;
         this.updateGame(gameDt);
       }
+      this.updateWeather(dt);
 
       this.render();
       requestAnimationFrame(ts => this.gameLoop(ts));
@@ -7096,7 +7176,7 @@
 
         if (e.hitFlash > 0) e.hitFlash -= dt * 6;
 
-        e.distance += e.speed * e.slowFactor * 60 * dt;
+        e.distance += e.speed * e.slowFactor * this.weatherMultiplier * 60 * dt;
         const pos = getPositionAlongPath(e.distance);
         e.x = pos.x;
         e.y = pos.y;
@@ -7786,6 +7866,7 @@
       this.sound.upgradeSound(tower.level + 1);
       tower.level++;
       tower.investedMoney += upgradeCost;
+      tower.upgradePulseStart = Date.now(); // Trigger pulse animation
 
       const lvlCfg = cfg.levels[tower.level - 1];
       if (lvlCfg) {
@@ -7826,21 +7907,21 @@
       this.sound.coinCollect();
       this.addFloatingText(tower.x, tower.y - 20, `+Rs ${refund} SOLD! 💰`, '#fbbf24');
 
-      // 1. Coin particle burst (22 golden coin sparkles with upward lift & gravity)
-      for (let i = 0; i < 22; i++) {
+      // 1. Coin particle burst (35 golden coin sparkles with upward lift & gravity)
+      for (let i = 0; i < 35; i++) {
         const ang = Math.random() * Math.PI * 2;
-        const spd = 30 + Math.random() * 70;
+        const spd = 40 + Math.random() * 80;
         this.particles.push({
           x: tower.x,
           y: tower.y,
           vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd - 35, // initial burst upward
-          gravity: 120, // realistic falling coins
+          vy: Math.sin(ang) * spd - 50, // stronger upward burst
+          gravity: 150, // realistic falling coins
           color: i % 2 === 0 ? '#fbbf24' : '#f59e0b',
-          size: 3 + Math.random() * 3,
+          size: 4 + Math.random() * 4,
           isCoin: true,
-          maxLife: 0.65,
-          life: 0.65,
+          maxLife: 0.8,
+          life: 0.8,
           alpha: 1
         });
       }
@@ -7852,11 +7933,11 @@
         vx: 0,
         vy: 0,
         radius: 4,
-        maxRadius: 38,
+        maxRadius: 85, // larger ring
         color: '#facc15',
         isRing: true,
-        maxLife: 0.45,
-        life: 0.45,
+        maxLife: 0.6, // slightly longer lived
+        life: 0.6,
         alpha: 1
       });
 
@@ -8146,6 +8227,17 @@
           ctx.strokeRect(hx + 1, hy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
           ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
           ctx.fillRect(hx, hy, TILE_SIZE, TILE_SIZE);
+
+          // Range circle on hover
+          ctx.save();
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.05)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(occupied.x, occupied.y, occupied.range, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
         } else if (this.isTileValidForPlacement(hc, hr)) {
           // Available placement tile: green highlight + placement preview
           ctx.fillStyle = 'rgba(34, 197, 94, 0.25)';
@@ -8244,6 +8336,13 @@
       for (let t of this.towers) {
         ctx.save();
         ctx.translate(t.x, t.y);
+
+        // Tower upgrade pulse animation
+        if (t.upgradePulseStart && now - t.upgradePulseStart < 400) {
+          const progress = (now - t.upgradePulseStart) / 400;
+          const scale = 1 + Math.sin(progress * Math.PI) * 0.3; // pulse effect
+          ctx.scale(scale, scale);
+        }
 
         // Visual Range Indicator (faint circle with glowing dashed border & range badge)
         if (this.selectedTower === t) {
@@ -8446,6 +8545,21 @@
           
         ctx.strokeText(hpLabel, 0, barY - 2);
         ctx.fillText(hpLabel, 0, barY - 2);
+
+        // Status Effect Indicators
+        let statusX = -12;
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        if (e.burnTimer > 0) {
+          ctx.fillText('🔥', statusX, barY - 14);
+          statusX += 12;
+        }
+        if (e.slowTimer > 0) {
+          ctx.fillText('❄️', statusX, barY - 14);
+          statusX += 12;
+        }
+
         ctx.restore();
       }
 
@@ -8493,6 +8607,17 @@
       }
 
       ctx.restore(); // Restore Camera Translation
+      
+      this.drawWeather(ctx);
+
+      // Current Weather Icon
+      ctx.save();
+      ctx.font = 'bold 24px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      const weatherIcons = { clear: '☀️', storm: '⛈️', rain: '🌧️' };
+      ctx.fillText(weatherIcons[this.weatherState] || '☀️', LOGICAL_WIDTH - 20, 10);
+      ctx.restore();
 
       // 12. Minimap / Scroll Bar Indicator on Right Screen Edge
       const trackH = 140;
@@ -8569,6 +8694,10 @@
 
       document.getElementById('btn-daily-reward')?.addEventListener('click', () => {
         this.openDailyRewardModal();
+      });
+
+      document.getElementById('btn-research')?.addEventListener('click', () => {
+        this.openResearchModal();
       });
 
       document.getElementById('btn-close-daily-reward')?.addEventListener('click', () => {
@@ -10008,7 +10137,50 @@
       };
       btnClose.addEventListener('click', closeGame);
     }
-  }
+
+    updateWeather(dt) {
+      this.weatherTimer += dt;
+      if (this.weatherTimer >= this.weatherDuration) {
+        this.weatherTimer = 0;
+        const states = ['clear', 'storm', 'rain'];
+        const currentIdx = states.indexOf(this.weatherState);
+        this.weatherState = states[(currentIdx + 1) % states.length];
+      }
+      
+      switch(this.weatherState) {
+        case 'storm': this.weatherMultiplier = 1.3; break;
+        case 'rain': this.weatherMultiplier = 0.8; break;
+        default: this.weatherMultiplier = 1.0; break;
+      }
+
+      if (Math.random() < 0.2) {
+        this.weather.push({
+          x: Math.random() * LOGICAL_WIDTH,
+          y: -10,
+          vx: Math.random() * 2 - 1,
+          vy: 200 + Math.random() * 100,
+          size: Math.random() * 2 + 1,
+          alpha: 0.3 + Math.random() * 0.4
+        });
+      }
+      for (let i = this.weather.length - 1; i >= 0; i--) {
+        const w = this.weather[i];
+        w.x += w.vx;
+        w.y += w.vy * dt;
+        if (w.y > LOGICAL_HEIGHT) this.weather.splice(i, 1);
+      }
+    }
+
+    drawWeather(ctx) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      for (let w of this.weather) {
+        ctx.globalAlpha = w.alpha;
+        ctx.fillRect(w.x, w.y, w.size, w.size * 3);
+      }
+      ctx.restore();
+    }
+  } // Closes GameState
 
   if (document.readyState === 'loading') {
     window.addEventListener('DOMContentLoaded', () => {

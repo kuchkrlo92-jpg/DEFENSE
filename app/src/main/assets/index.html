@@ -63,6 +63,9 @@
                 <span class="btn-icon">🎁</span>
                 <span id="daily-badge" class="badge hidden">!</span>
               </button>
+              <button id="btn-research" class="btn-circle-top" title="Research Tree">
+                <span class="btn-icon">🔬</span>
+              </button>
             </div>
           </div>
         </div>
@@ -727,6 +730,20 @@
     </div>
   </div>
 
+    <!-- RESEARCH TREE MODAL -->
+    <div id="research-modal" class="modal-overlay hidden">
+      <div class="modal-card modal-large research-card">
+        <div class="modal-header">
+          <h2>🔬 RESEARCH TREE</h2>
+          <button class="modal-close" data-close="research-modal">✕</button>
+        </div>
+        <div class="modal-content scrollable">
+          <div id="research-list" class="items-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </div>
   <script src="game.js"></script>
 </body>
 </html>

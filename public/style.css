@@ -1445,6 +1445,26 @@ button,
   cursor: pointer;
 }
 
+.research-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.research-title {
+  font-weight: 800;
+  color: #fbbf24;
+}
+
+.research-desc {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
 .profile-preview-box {
   display: flex;
   flex-direction: column;
