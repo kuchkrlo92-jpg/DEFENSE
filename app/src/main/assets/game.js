@@ -5820,6 +5820,18 @@
       flying: false,
       isBoss: true,
       isFinalBoss: true
+    },
+    dreadLord: {
+      name: 'DreadLord',
+      color: '#7e22ce',
+      icon: '👑',
+      radius: 25,
+      baseHp: 50,
+      speed: 0.35,
+      baseCastleDamage: 25,
+      reward: 1000,
+      flying: false,
+      isBoss: true
     }
   };
 
@@ -6882,8 +6894,12 @@
         if (currentWave >= 8 && i % 8 === 7) typeKey = 'swarm';
         if (currentWave >= 10 && i === Math.floor(count / 2)) typeKey = 'miniboss';
 
+        // Every 10th wave contains the DreadLord boss
+        if (currentWave % 10 === 0 && i === count - 1) {
+          typeKey = 'dreadLord';
+        }
         // Every 5th wave contains a Void Behemoth boss (or Void Behemoth Supreme on Final Wave)
-        if (isBossWave && i === count - 1) {
+        else if (isBossWave && i === count - 1) {
           typeKey = isFinalWave ? 'finalBoss' : 'boss';
         }
 
