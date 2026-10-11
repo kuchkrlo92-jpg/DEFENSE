@@ -49,6 +49,9 @@
               <button id="btn-settings" class="btn-circle-top" title="Settings">
                 <span class="btn-icon">⚙️</span>
               </button>
+              <button id="btn-bestiary" class="btn-circle-top" title="Bestiary">
+                <span class="btn-icon">📖</span>
+              </button>
             </div>
           </div>
 
@@ -739,6 +742,20 @@
         </div>
         <div class="modal-content scrollable">
           <div id="research-list" class="items-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- BESTIARY MODAL -->
+    <div id="bestiary-modal" class="modal-overlay hidden">
+      <div class="modal-card modal-large bestiary-card">
+        <div class="modal-header">
+          <h2>📖 BESTIARY</h2>
+          <button class="modal-close" data-close="bestiary-modal">✕</button>
+        </div>
+        <div class="modal-content scrollable">
+          <div id="bestiary-list" class="items-list">
             <!-- Dynamically populated -->
           </div>
         </div>

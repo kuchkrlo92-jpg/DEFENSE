@@ -1465,6 +1465,43 @@ button,
   color: #94a3b8;
 }
 
+.bestiary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.bestiary-icon {
+  font-size: 24px;
+}
+
+.bestiary-info {
+  flex-grow: 1;
+  margin-left: 12px;
+}
+
+.bestiary-title {
+  font-weight: 800;
+  color: #fbbf24;
+}
+
+.bestiary-stats {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.bestiary-threat {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .profile-preview-box {
   display: flex;
   flex-direction: column;

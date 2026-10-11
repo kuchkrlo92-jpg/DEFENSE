@@ -942,7 +942,8 @@
           cannonRng: 0,
           magicDmg: 0,
           lightningDmg: 0
-        }
+        },
+        unlockedEnemies: []
       };
       this.save(initialData);
       return initialData;
@@ -6029,6 +6030,53 @@
       if (modal) modal.classList.add('hidden');
     }
 
+    openBestiaryModal() {
+      this.sound.buttonClick();
+      this.renderBestiaryUI();
+      const modal = document.getElementById('bestiary-modal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    closeBestiaryModal() {
+      this.sound.buttonClick();
+      const modal = document.getElementById('bestiary-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    renderBestiaryUI() {
+      const list = document.getElementById('bestiary-list');
+      if (!list) return;
+      list.innerHTML = '';
+
+      const threatLevels = {
+        low: 'Low',
+        medium: 'Medium',
+        high: 'High',
+        boss: 'BOSS'
+      };
+
+      Object.entries(ENEMY_TYPES).forEach(([type, cfg]) => {
+        const item = document.createElement('div');
+        item.className = 'bestiary-item';
+        
+        const isUnlocked = this.saveData.unlockedEnemies.includes(type);
+        const name = isUnlocked ? cfg.name : '???';
+        const icon = isUnlocked ? cfg.icon : '❓';
+        const stats = isUnlocked ? `HP: ${cfg.baseHp} | Spd: ${cfg.speed}` : 'Locked';
+        const threat = isUnlocked ? (cfg.isBoss ? 'boss' : (cfg.baseHp > 4 ? 'high' : (cfg.baseHp > 2 ? 'medium' : 'low'))) : 'unknown';
+
+        item.innerHTML = `
+          <div class="bestiary-icon">${icon}</div>
+          <div class="bestiary-info">
+            <div class="bestiary-title">${name}</div>
+            <div class="bestiary-stats">${stats}</div>
+          </div>
+          <div class="bestiary-threat">${isUnlocked ? threatLevels[threat] : '???'}</div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
     renderDailyRewardUI() {
       const grid = document.getElementById('daily-rewards-grid');
       const claimBtn = document.getElementById('btn-claim-daily');
@@ -7630,6 +7678,11 @@
       this.addMoney(enemy.reward);
       this.addFloatingText(enemy.x, enemy.y - 16, `+Rs ${enemy.reward}`, '#fbbf24');
 
+      if (!this.saveData.unlockedEnemies.includes(enemy.type)) {
+        this.saveData.unlockedEnemies.push(enemy.type);
+        Storage.save(this.saveData);
+      }
+
       this.matchKills++;
       this.totalKills++;
       if (enemy.isBoss) {
@@ -8714,6 +8767,10 @@
 
       document.getElementById('btn-research')?.addEventListener('click', () => {
         this.openResearchModal();
+      });
+
+      document.getElementById('btn-bestiary')?.addEventListener('click', () => {
+        this.openBestiaryModal();
       });
 
       document.getElementById('btn-close-daily-reward')?.addEventListener('click', () => {
