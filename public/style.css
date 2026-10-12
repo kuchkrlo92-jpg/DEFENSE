@@ -1494,6 +1494,12 @@ button,
   color: #94a3b8;
 }
 
+.bestiary-weakness {
+  font-size: 10px;
+  color: #fbbf24;
+  margin-top: 2px;
+}
+
 .bestiary-threat {
   font-size: 10px;
   font-weight: 800;

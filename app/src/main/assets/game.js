@@ -6064,12 +6064,22 @@
         const icon = isUnlocked ? cfg.icon : '❓';
         const stats = isUnlocked ? `HP: ${cfg.baseHp} | Spd: ${cfg.speed}` : 'Locked';
         const threat = isUnlocked ? (cfg.isBoss ? 'boss' : (cfg.baseHp > 4 ? 'high' : (cfg.baseHp > 2 ? 'medium' : 'low'))) : 'unknown';
+        
+        // Mock weakness logic: armored weak to lightning/cannon, fast weak to ice, flying weak to archer, generic weak to fire
+        let weakness = 'None';
+        if (isUnlocked) {
+          if (type === 'armored') weakness = '⚡, 💣';
+          else if (type === 'fast') weakness = '❄️';
+          else if (type === 'flying') weakness = '🏹';
+          else weakness = '🔥';
+        }
 
         item.innerHTML = `
           <div class="bestiary-icon">${icon}</div>
           <div class="bestiary-info">
             <div class="bestiary-title">${name}</div>
             <div class="bestiary-stats">${stats}</div>
+            <div class="bestiary-weakness">Weak: ${weakness}</div>
           </div>
           <div class="bestiary-threat">${isUnlocked ? threatLevels[threat] : '???'}</div>
         `;
