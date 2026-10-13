@@ -6997,6 +6997,7 @@
       this.closeInspector();
 
       this.updateHud();
+      document.querySelector('.menu-footer-bar').classList.add('hidden');
       this.showScreen('gameplay-screen');
       this.resizeCanvas();
       this.showWaveBanner(`WAVE 1 / ${diffCfg.maxWaves}`, 'PREPARE DEFENSES!');
@@ -7004,6 +7005,7 @@
     }
 
     endMatchGameOver() {
+      document.querySelector('.menu-footer-bar').classList.remove('hidden');
       if (this.isChallengeMode) {
         this.failChallenge();
         return;
@@ -7088,6 +7090,7 @@
 
       this.updateMapUI();
       this.saveGameData();
+      document.querySelector('.menu-footer-bar').classList.remove('hidden');
       this.showScreen('victory-screen');
     }
 
@@ -9005,7 +9008,7 @@
 
     // --- USER INTERACTION ---
     activateFooterButton(id) {
-      const footerButtons = ['btn-maps', 'btn-task', 'btn-start', 'btn-challenge', 'btn-exit'];
+      const footerButtons = ['btn-maps', 'btn-weapons', 'btn-start', 'btn-challenge', 'btn-exit'];
       footerButtons.forEach(btnId => {
         const el = document.getElementById(btnId);
         if (el) {
@@ -9042,7 +9045,6 @@
 
       document.getElementById('btn-task')?.addEventListener('click', () => {
         this.sound.buttonClick();
-        this.activateFooterButton('btn-task');
         this.openTasksModal();
       });
 

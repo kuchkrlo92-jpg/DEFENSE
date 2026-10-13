@@ -697,6 +697,9 @@ button,
 /* FIXED BOTTOM FOOTER BUTTONS GRID */
 /* FLOATING BOTTOM FOOTER ROW (NO PANEL, BACKGROUND, OR CONTAINER BORDER) */
 .menu-footer-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
   width: 100%;
   padding: 8px 6px 4px 6px;
   background: transparent;
@@ -707,6 +710,7 @@ button,
   flex-direction: column;
   gap: 8px;
   box-sizing: border-box;
+  z-index: 1000;
 }
 
 .footer-buttons-row {
