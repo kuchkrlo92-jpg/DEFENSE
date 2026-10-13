@@ -943,7 +943,9 @@
           magicDmg: 0,
           lightningDmg: 0
         },
-        unlockedEnemies: []
+        unlockedEnemies: [],
+        ownedWeapons: ['wpn_starter'],
+        equippedWeapon: 'wpn_starter'
       };
       this.save(initialData);
       return initialData;
@@ -1037,6 +1039,14 @@
             }
             parsed.challenges = freshChs;
 
+            // Weapons inventory persistence
+            if (!parsed.ownedWeapons || !Array.isArray(parsed.ownedWeapons) || parsed.ownedWeapons.length === 0) {
+              parsed.ownedWeapons = ['wpn_starter'];
+            }
+            if (!parsed.equippedWeapon) {
+              parsed.equippedWeapon = 'wpn_starter';
+            }
+
             this._cache = parsed;
             return parsed;
           }
@@ -1076,6 +1086,39 @@
       if (direct && direct.trim()) return direct.trim();
       const data = this._cache || this.load();
       return (data && data.playerName && data.playerName.trim()) ? data.playerName.trim() : "Your Player";
+    },
+
+    // --- WEAPONS ARSENAL STORAGE ---
+    getEquippedWeapon() {
+      const direct = this._getItem('vtd_equipped_weapon');
+      if (direct) return direct;
+      const data = this._cache || this.load();
+      return (data && data.equippedWeapon) ? data.equippedWeapon : 'wpn_starter';
+    },
+    setEquippedWeapon(id) {
+      this._setItem('vtd_equipped_weapon', id);
+      try {
+        const data = this._cache || this.load();
+        data.equippedWeapon = id;
+        this.save(data);
+      } catch (e) {}
+    },
+    getOwnedWeapons() {
+      const data = this._cache || this.load();
+      if (data && Array.isArray(data.ownedWeapons) && data.ownedWeapons.length > 0) {
+        return data.ownedWeapons;
+      }
+      return ['wpn_starter'];
+    },
+    addOwnedWeapon(id) {
+      try {
+        const data = this._cache || this.load();
+        if (!data.ownedWeapons) data.ownedWeapons = ['wpn_starter'];
+        if (!data.ownedWeapons.includes(id)) {
+          data.ownedWeapons.push(id);
+          this.save(data);
+        }
+      } catch (e) {}
     },
 
     // --- PLAYER AVATAR / PICTURE ---
@@ -5585,16 +5628,16 @@
       ctx.stroke();
 
     } else if (p.type === 'castle') {
-      // Smaller flying version of Castle's bullet icon 🏰
+      // Equipped weapon projectile icon & element trail
       ctx.rotate(visualAngle);
       ctx.font = '14px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('🏰', 0, 0);
+      ctx.fillText(p.icon || '⚔️', 0, 0);
 
-      // Golden citadel defense trail
+      // Citadel defense weapon trail
       ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(245, 158, 11, 0.7)';
+      ctx.strokeStyle = p.glowColor || 'rgba(245, 158, 11, 0.7)';
       ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.moveTo(-Math.cos(visualAngle) * 10, -Math.sin(visualAngle) * 10);
@@ -5691,6 +5734,35 @@
       color: "#f97316",
       desc: "Searing flame burn damage over time"
     }
+  };
+
+  // --- WEAPONS ARSENAL LIBRARY (STARTER + 25 PURCHASABLE SHOP WEAPONS) ---
+  const WEAPON_LIBRARY = {
+    wpn_starter: { id: 'wpn_starter', name: 'Heavy Machine Gun', type: 'gun', icon: '🔫', damage: 12, attackSpeed: 2.5, range: 160, price: 0, unlockLevel: 1, special: 'Rapid Fire', specialType: 'normal', desc: 'Fast-firing machine gun for starter defense.' },
+    wpn_rocket_launcher: { id: 'wpn_rocket_launcher', name: 'Rocket Launcher', type: 'cannon', icon: '🚀', damage: 80, attackSpeed: 0.5, range: 200, price: 1500, unlockLevel: 3, special: 'Explosive Impact', specialType: 'splash', desc: 'Heavy rockets with high area damage.' },
+    wpn_laser_cannon: { id: 'wpn_laser_cannon', name: 'Laser Cannon', type: 'lightning', icon: '❇️', damage: 35, attackSpeed: 1.5, range: 220, price: 2000, unlockLevel: 4, special: 'Piercing Beam', specialType: 'pierce', desc: 'High-energy beam melting through armor.' },
+    wpn_flame_thrower: { id: 'wpn_flame_thrower', name: 'Flame Thrower', type: 'fire', icon: '🔥', damage: 20, attackSpeed: 5, range: 120, price: 2500, unlockLevel: 5, special: 'Burn Damage', specialType: 'fire', desc: 'Searing flames damaging over time.' },
+    wpn_ice_cannon: { id: 'wpn_ice_cannon', name: 'Ice Cannon', type: 'ice', icon: '❄️', damage: 18, attackSpeed: 1.0, range: 180, price: 3000, unlockLevel: 6, special: 'Slow Effect', specialType: 'ice', desc: 'Freezes enemies to slow them down.' },
+    wpn_sniper_tower: { id: 'wpn_sniper_tower', name: 'Sniper Tower', type: 'gun', icon: '🎯', damage: 150, attackSpeed: 0.3, range: 300, price: 3500, unlockLevel: 7, special: 'Extreme Range', specialType: 'normal', desc: 'Long-range precision strikes.' },
+    wpn_minigun_turret: { id: 'wpn_minigun_turret', name: 'Minigun Turret', type: 'gun', icon: '🔫', damage: 8, attackSpeed: 10, range: 150, price: 4000, unlockLevel: 8, special: 'Bullet Storm', specialType: 'normal', desc: 'Extremely fast firing rate.' },
+    wpn_tesla_coil: { id: 'wpn_tesla_coil', name: 'Tesla Coil', type: 'lightning', icon: '⚡', damage: 45, attackSpeed: 1.2, range: 170, price: 4500, unlockLevel: 9, special: 'Chain Lightning', specialType: 'lightning', desc: 'Arcs electricity between foes.' },
+    wpn_poison_sprayer: { id: 'wpn_poison_sprayer', name: 'Poison Sprayer', type: 'fire', icon: '🧪', damage: 15, attackSpeed: 4, range: 130, price: 5000, unlockLevel: 10, special: 'Poison Damage', specialType: 'fire', desc: 'Sprays toxic clouds of poison.' },
+    wpn_mortar_cannon: { id: 'wpn_mortar_cannon', name: 'Mortar Cannon', type: 'cannon', icon: '💣', damage: 120, attackSpeed: 0.4, range: 250, price: 5500, unlockLevel: 11, special: 'Explosive Shells', specialType: 'splash', desc: 'Heavy explosive artillery.' },
+    wpn_plasma_blaster: { id: 'wpn_plasma_blaster', name: 'Plasma Blaster', type: 'lightning', icon: '💠', damage: 65, attackSpeed: 1.8, range: 180, price: 6000, unlockLevel: 12, special: 'Plasma Bolt', specialType: 'pierce', desc: 'Shoots high-energy plasma.' },
+    wpn_air_defense: { id: 'wpn_air_defense', name: 'Air Defense', type: 'gun', icon: '🚁', damage: 100, attackSpeed: 1.0, range: 250, price: 6500, unlockLevel: 13, special: 'Anti-Air', specialType: 'normal', desc: 'Specialized for air targets.' },
+    wpn_railgun: { id: 'wpn_railgun', name: 'Railgun', type: 'lightning', icon: '🔌', damage: 250, attackSpeed: 0.2, range: 280, price: 7000, unlockLevel: 14, special: 'Piercing Shot', specialType: 'pierce', desc: 'Electromagnetic rail projectile.' },
+    wpn_sonic_cannon: { id: 'wpn_sonic_cannon', name: 'Sonic Cannon', type: 'cannon', icon: '🔊', damage: 70, attackSpeed: 0.7, range: 190, price: 7500, unlockLevel: 15, special: 'Sonic Blast', specialType: 'splash', desc: 'Disruptive sonic waves.' },
+    wpn_mine_launcher: { id: 'wpn_mine_launcher', name: 'Mine Launcher', type: 'cannon', icon: '🕳️', damage: 180, attackSpeed: 0.3, range: 150, price: 8000, unlockLevel: 16, special: 'Place Mines', specialType: 'splash', desc: 'Deploys lethal mines.' },
+    wpn_shockwave_tower: { id: 'wpn_shockwave_tower', name: 'Shockwave Tower', type: 'sword', icon: '〰️', damage: 90, attackSpeed: 0.5, range: 120, price: 8500, unlockLevel: 17, special: 'Ground Pulse', specialType: 'splash', desc: 'Seismic ground pulses.' },
+    wpn_black_hole: { id: 'wpn_black_hole', name: 'Black Hole Generator', type: 'staff', icon: '🕳️', damage: 40, attackSpeed: 0.1, range: 200, price: 9000, unlockLevel: 18, special: 'Gravity Well', specialType: 'splash', desc: 'Pulls in and crushes enemies.' },
+    wpn_missile_swarm: { id: 'wpn_missile_swarm', name: 'Missile Swarm', type: 'cannon', icon: '🎇', damage: 75, attackSpeed: 0.6, range: 220, price: 10000, unlockLevel: 19, special: 'Multi-Missile', specialType: 'splash', desc: 'Fires swarm of missiles.' },
+    wpn_nano_swarm: { id: 'wpn_nano_swarm', name: 'Nano Swarm Tower', type: 'lightning', icon: '🦠', damage: 55, attackSpeed: 3, range: 160, price: 11000, unlockLevel: 20, special: 'Nano Attack', specialType: 'normal', desc: 'Nanobot cloud damage.' },
+    wpn_meteor_launcher: { id: 'wpn_meteor_launcher', name: 'Meteor Launcher', type: 'fire', icon: '☄️', damage: 300, attackSpeed: 0.2, range: 260, price: 12000, unlockLevel: 21, special: 'Meteor Strike', specialType: 'splash', desc: 'Calls down fiery meteors.' },
+    wpn_gravity_crusher: { id: 'wpn_gravity_crusher', name: 'Gravity Crusher', type: 'sword', icon: '⚖️', damage: 200, attackSpeed: 0.4, range: 140, price: 13000, unlockLevel: 22, special: 'Gravity Field', specialType: 'splash', desc: 'Crushing gravity forces.' },
+    wpn_quantum_beam: { id: 'wpn_quantum_beam', name: 'Quantum Beam', type: 'lightning', icon: '⚛️', damage: 350, attackSpeed: 0.3, range: 250, price: 14000, unlockLevel: 23, special: 'Quantum Beam', specialType: 'pierce', desc: 'Unstable quantum energy.' },
+    wpn_drone_swarm: { id: 'wpn_drone_swarm', name: 'Drone Swarm', type: 'gun', icon: '🛸', damage: 100, attackSpeed: 2, range: 200, price: 15000, unlockLevel: 24, special: 'Drone Attack', specialType: 'normal', desc: 'Autonomous drone attacks.' },
+    wpn_nuclear_tower: { id: 'wpn_nuclear_tower', name: 'Nuclear Tower', type: 'fire', icon: '☢️', damage: 600, attackSpeed: 0.1, range: 280, price: 18000, unlockLevel: 25, special: 'Nuclear Blast', specialType: 'splash', desc: 'Massive nuclear detonation.' },
+    wpn_omega_destroyer: { id: 'wpn_omega_destroyer', name: 'Omega Destroyer', type: 'legendary', icon: '💀', damage: 1000, attackSpeed: 0.05, range: 350, price: 25000, unlockLevel: 30, special: 'Total Annihilation', specialType: 'splash', desc: 'Ultimate weapon of doom.' }
   };
 
   // Enemy Types (10 Enemy Categories)
@@ -5864,8 +5936,11 @@
       this.hasCannonLv5 = false;
       this.hasIceLv5 = false;
       this.hasFireLv5 = false;
+      this.equippedWeaponId = Storage.getEquippedWeapon();
+      this.ownedWeaponIds = Storage.getOwnedWeapons();
       this.settings = this.saveData.settings || { music: true, sfx: true, quality: "medium", difficulty: "easy", masterVolume: 0.70 };
       this.difficulty = this.settings.difficulty || Storage.getDifficulty();
+      this.playerLevel = this.saveData.playerLevel || 1;
 
       this.totalKills = this.saveData.totalKills || 0;
       this.highestWave = this.saveData.highestWave || 0;
@@ -6085,6 +6160,180 @@
         `;
         list.appendChild(item);
       });
+    }
+
+    getEquippedWeapon() {
+      return WEAPON_LIBRARY[this.equippedWeaponId] || WEAPON_LIBRARY.wpn_starter;
+    }
+
+    openWeaponsModal() {
+      this.sound.buttonClick();
+      this.renderWeaponsUI();
+      const modal = document.getElementById('weapons-modal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    closeWeaponsModal() {
+      this.sound.buttonClick();
+      const modal = document.getElementById('weapons-modal');
+      if (modal) modal.classList.add('hidden');
+      document.getElementById('btn-weapons')?.classList.remove('active-nav');
+    }
+
+    renderWeaponsUI() {
+      const goldValEl = document.getElementById('weapons-gold-val');
+      if (goldValEl) goldValEl.textContent = 'Rs ' + this.money.toLocaleString();
+
+      const countBadge = document.getElementById('my-weapons-count-badge');
+      if (countBadge) countBadge.textContent = `${this.ownedWeaponIds.length} Owned`;
+
+      // FRAME 1 — MY WEAPONS
+      const myListEl = document.getElementById('my-weapons-list');
+      if (myListEl) {
+        myListEl.innerHTML = '';
+        this.ownedWeaponIds.forEach(id => {
+          const wpn = WEAPON_LIBRARY[id] || WEAPON_LIBRARY.wpn_starter;
+          const isEquipped = (this.equippedWeaponId === id);
+
+          const card = document.createElement('div');
+          card.className = 'weapon-card' + (isEquipped ? ' equipped-card' : '');
+          card.innerHTML = `
+            <div class="weapon-card-main">
+              <div class="weapon-icon-box">${wpn.icon}</div>
+              <div class="weapon-details">
+                <div class="weapon-name-row">
+                  <span class="weapon-name" title="${wpn.name}">${wpn.name}</span>
+                  <span class="weapon-type-pill ${wpn.type}">${wpn.type}</span>
+                </div>
+                <div class="weapon-stats-row">
+                  <span class="stat-item">⚔️ Dmg ${wpn.damage}</span>
+                  <span class="stat-item">⚡ Spd ${wpn.attackSpeed}/s</span>
+                  <span class="stat-item">🎯 Rng ${wpn.range}</span>
+                  <span class="stat-special">${wpn.special}</span>
+                </div>
+              </div>
+            </div>
+            <div class="weapon-action-box">
+              ${isEquipped 
+                ? '<span class="badge-equipped-tag">✨ EQUIPPED</span>'
+                : `<button class="btn-equip-action" data-equip-id="${wpn.id}">EQUIP</button>`
+              }
+            </div>
+          `;
+
+          const equipBtn = card.querySelector('.btn-equip-action');
+          if (equipBtn) {
+            equipBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              this.equipWeapon(wpn.id);
+            });
+          }
+          myListEl.appendChild(card);
+        });
+      }
+
+      // FRAME 2 — WEAPON SHOP (25 purchasable weapons)
+      const shopListEl = document.getElementById('weapon-shop-list');
+      if (shopListEl) {
+        shopListEl.innerHTML = '';
+        Object.values(WEAPON_LIBRARY).forEach(wpn => {
+          if (wpn.id === 'wpn_starter') return; // Starter is default free
+          const isOwned = this.ownedWeaponIds.includes(wpn.id);
+          const isEquipped = (this.equippedWeaponId === wpn.id);
+          const canAfford = this.money >= wpn.price;
+          const levelMet = this.playerLevel >= wpn.unlockLevel;
+          const canBuy = canAfford && levelMet;
+
+          const card = document.createElement('div');
+          card.className = 'weapon-card' + (isEquipped ? ' equipped-card' : '');
+          card.innerHTML = `
+            <div class="weapon-card-main">
+              <div class="weapon-icon-box">${wpn.icon}</div>
+              <div class="weapon-details">
+                <div class="weapon-name-row">
+                  <span class="weapon-name" title="${wpn.name}">${wpn.name}</span>
+                  <span class="weapon-type-pill ${wpn.type}">${wpn.type}</span>
+                </div>
+                <div class="weapon-stats-row">
+                  <span class="stat-item">⚔️ Dmg ${wpn.damage}</span>
+                  <span class="stat-item">⚡ Spd ${wpn.attackSpeed}/s</span>
+                  <span class="stat-item">🎯 Rng ${wpn.range}</span>
+                  <span class="stat-special">${wpn.special}</span>
+                </div>
+                ${!levelMet ? `<div class="weapon-stats-row" style="color:#ef4444;font-size:9px;">Locked (Requires Level ${wpn.unlockLevel})</div>` : ''}
+              </div>
+            </div>
+            <div class="weapon-action-box">
+              <span class="weapon-price-tag">💰 Rs ${wpn.price.toLocaleString()}</span>
+              ${isOwned
+                ? '<span class="badge-owned-tag">✔ OWNED</span>'
+                : `<button class="btn-shop-buy ${canBuy ? '' : 'btn-disabled'}" ${canBuy ? '' : 'disabled'} data-buy-id="${wpn.id}">
+                    ${levelMet ? 'BUY' : `LOCKED (LV ${wpn.unlockLevel})`}
+                   </button>`
+              }
+            </div>
+          `;
+
+          const buyBtn = card.querySelector('.btn-shop-buy');
+          if (buyBtn && !isOwned && canAfford) {
+            buyBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              this.buyWeapon(wpn.id);
+            });
+          }
+          shopListEl.appendChild(card);
+        });
+      }
+    }
+
+    buyWeapon(weaponId) {
+      const wpn = WEAPON_LIBRARY[weaponId];
+      if (!wpn) return;
+      if (this.ownedWeaponIds.includes(weaponId)) return; // Prevent duplicate purchase
+      
+      // LEVEL REQUIREMENT CHECK
+      if (this.playerLevel < wpn.unlockLevel) {
+          this.showWaveBanner('LEVEL REQUIREMENT NOT MET!', `Requires Level ${wpn.unlockLevel}`);
+          return;
+      }
+      
+      if (this.money < wpn.price) {
+        this.sound.playTone(220, 'sawtooth', 0.15, 0.2, 110);
+        this.showWaveBanner('NOT ENOUGH MONEY!', 'Earn more gold to purchase this weapon.');
+        return;
+      }
+
+      const paid = this.spendMoney(wpn.price);
+      if (!paid) return;
+
+      this.ownedWeaponIds.push(weaponId);
+      this.saveData.ownedWeapons = this.ownedWeaponIds;
+      Storage.addOwnedWeapon(weaponId);
+
+      // Auto-equip newly purchased weapon
+      this.equippedWeaponId = weaponId;
+      this.saveData.equippedWeapon = weaponId;
+      Storage.setEquippedWeapon(weaponId);
+
+      this.sound.coinCollect();
+      this.renderWeaponsUI();
+      this.updateMoneyDisplay();
+
+      // Banner feedback
+      this.showWaveBanner('WEAPON UNLOCKED!', `${wpn.icon} ${wpn.name} EQUIPPED!`);
+    }
+
+    equipWeapon(weaponId) {
+      const wpn = WEAPON_LIBRARY[weaponId];
+      if (!wpn) return;
+      if (!this.ownedWeaponIds.includes(weaponId)) return;
+
+      this.equippedWeaponId = weaponId;
+      this.saveData.equippedWeapon = weaponId;
+      Storage.setEquippedWeapon(weaponId);
+
+      this.sound.playTone(520, 'triangle', 0.2, 0.18, 780);
+      this.renderWeaponsUI();
     }
 
     renderDailyRewardUI() {
@@ -7323,13 +7572,13 @@
         }
       }
 
-      // --- CASTLE AUTO-FIRE SYSTEM ---
-      // Automatically detects approaching enemies within castle range (145px)
-      // Fires bullets immediately when enemy enters range, targets closest enemy to castle
-      // Stays idle when no enemies in range, and continues throughout all waves
+      // --- CASTLE & WEAPON AUTO-FIRE SYSTEM ---
+      // Uses stats of currently equipped weapon (range, attack speed, damage, special)
+      const equippedWpn = this.getEquippedWeapon();
       const castleX = 180;
       const castleY = 445;
-      const castleRange = 145;
+      const castleRange = (equippedWpn && equippedWpn.range) ? equippedWpn.range : 145;
+      const attackInterval = (equippedWpn && equippedWpn.attackSpeed) ? (1 / equippedWpn.attackSpeed) : 0.55;
 
       let closestEnemyToCastle = null;
       let minDistanceToCastle = Infinity;
@@ -7350,17 +7599,16 @@
         // Enemy in range: start firing immediately if castle was idle
         if (this.castleShootTimer === null || this.castleShootTimer === undefined || this.castleShootTimer <= 0) {
           this.fireCastleBullet(closestEnemyToCastle, castleX, castleY);
-          this.castleShootTimer = 0.55; // Fixed fire rate while enemies remain in range
+          this.castleShootTimer = attackInterval;
         } else {
           this.castleShootTimer -= dt;
           if (this.castleShootTimer <= 0) {
             this.fireCastleBullet(closestEnemyToCastle, castleX, castleY);
-            this.castleShootTimer = 0.55;
+            this.castleShootTimer = attackInterval;
           }
         }
       } else {
         // No enemies in range: Castle remains idle!
-        // Reset timer to 0 so when an enemy enters range, it fires immediately
         this.castleShootTimer = 0;
       }
 
@@ -7468,10 +7716,17 @@
     }
 
     fireCastleBullet(target, originX, originY) {
-      this.sound.playTone(560, 'triangle', 0.1, 0.22, 280);
+      const wpn = this.getEquippedWeapon();
+      const soundFreq = wpn.specialType === 'lightning' ? 720 : wpn.specialType === 'ice' ? 640 : wpn.specialType === 'fire' ? 380 : 540;
+      this.sound.playTone(soundFreq, 'triangle', 0.1, 0.22, 280);
       const dx = target.x - originX;
       const dy = target.y - originY;
       const angle = Math.atan2(dy, dx);
+
+      const glow = wpn.specialType === 'fire' ? '#ef4444'
+        : wpn.specialType === 'ice' ? '#38bdf8'
+        : wpn.specialType === 'lightning' ? '#fbbf24'
+        : (wpn.type === 'legendary' ? '#fde047' : '#f59e0b');
 
       this.projectiles.push({
         x: originX,
@@ -7480,13 +7735,16 @@
         targetX: target.x,
         targetY: target.y,
         angle: angle,
-        speed: 460,
-        damage: 1, // Damage enemy and reduce health (respecting difficulty HP)
+        speed: 480,
+        damage: wpn.damage || 1,
         type: 'castle',
-        icon: '🏰', // Matches castle bullet icon
-        glowColor: '#fbbf24',
+        weaponType: wpn.type,
+        special: wpn.special,
+        specialType: wpn.specialType,
+        icon: wpn.icon || '⚔️',
+        glowColor: glow,
         life: 1.6,
-        color: '#f59e0b',
+        color: glow,
         isCastle: true
       });
 
@@ -7496,7 +7754,7 @@
         y: originY - 4,
         vx: Math.cos(angle) * 32 + (Math.random() - 0.5) * 16,
         vy: Math.sin(angle) * 32 + (Math.random() - 0.5) * 16,
-        color: '#fbbf24',
+        color: glow,
         size: 3.5,
         maxLife: 0.18,
         life: 0.18,
@@ -7652,7 +7910,34 @@
           } else if (proj.type === 'archer') {
             this.spawnExplosionParticles(hitX, hitY, '#fbbf24', 6);
           } else if (proj.type === 'castle') {
-            this.spawnExplosionParticles(hitX, hitY, '#f59e0b', 8);
+            const hitColor = proj.glowColor || '#f59e0b';
+            this.spawnExplosionParticles(hitX, hitY, hitColor, 8);
+            if (proj.specialType === 'ice') {
+              proj.targetEnemy.slowTimer = 2.2;
+              proj.targetEnemy.slowFactor = 0.5;
+            } else if (proj.specialType === 'splash') {
+              for (let other of this.enemies) {
+                if (other !== proj.targetEnemy && other.hp > 0) {
+                  const d = Math.hypot(other.x - hitX, other.y - hitY);
+                  if (d <= 45) {
+                    this.damageEnemy(other, Math.max(1, Math.round(proj.damage * 0.6)), null);
+                    this.spawnExplosionParticles(other.x, other.y, hitColor, 4);
+                  }
+                }
+              }
+            } else if (proj.specialType === 'lightning') {
+              let chained = 0;
+              for (let other of this.enemies) {
+                if (other !== proj.targetEnemy && other.hp > 0 && chained < 2) {
+                  const d = Math.hypot(other.x - hitX, other.y - hitY);
+                  if (d <= 75) {
+                    this.damageEnemy(other, Math.max(1, Math.round(proj.damage * 0.7)), null);
+                    this.spawnExplosionParticles(other.x, other.y, '#fbbf24', 4);
+                    chained++;
+                  }
+                }
+              }
+            }
           }
           this.damageEnemy(proj.targetEnemy, proj.damage, proj.tower || null);
         }
@@ -8767,9 +9052,7 @@
         this.openChallengesScreen();
       });
 
-      document.getElementById('btn-achievements')?.addEventListener('click', () => {
-        this.openAchievementsModal();
-      });
+
 
       document.getElementById('btn-daily-reward')?.addEventListener('click', () => {
         this.openDailyRewardModal();
@@ -8840,6 +9123,16 @@
       document.getElementById('btn-exit')?.addEventListener('click', () => {
         this.activateFooterButton('btn-exit');
         this.openExitScreen();
+      });
+
+      document.getElementById('btn-weapons')?.addEventListener('click', () => {
+        this.sound.buttonClick();
+        this.activateFooterButton('btn-weapons');
+        this.openWeaponsModal();
+      });
+
+      document.getElementById('btn-close-weapons')?.addEventListener('click', () => {
+        this.closeWeaponsModal();
       });
 
       document.getElementById('btn-fullscreen')?.addEventListener('click', async () => {
@@ -9999,6 +10292,53 @@
       this.menuBattle?.pause();
       document.getElementById('settings-modal')?.classList.remove('hidden');
     }
+
+    updateWeather(dt) {
+      this.weatherTimer = (this.weatherTimer || 0) + dt;
+      if (this.weatherTimer >= (this.weatherDuration || 15)) {
+        this.weatherTimer = 0;
+        const states = ['clear', 'storm', 'rain'];
+        const currentIdx = states.indexOf(this.weatherState || 'clear');
+        this.weatherState = states[(currentIdx + 1) % states.length];
+      }
+      
+      switch(this.weatherState) {
+        case 'storm': this.weatherMultiplier = 1.3; break;
+        case 'rain': this.weatherMultiplier = 0.8; break;
+        default: this.weatherMultiplier = 1.0; break;
+      }
+
+      if (Math.random() < 0.2) {
+        if (!this.weather) this.weather = [];
+        this.weather.push({
+          x: Math.random() * (LOGICAL_WIDTH || 360),
+          y: -10,
+          vx: Math.random() * 2 - 1,
+          vy: 200 + Math.random() * 100,
+          size: Math.random() * 2 + 1,
+          alpha: 0.3 + Math.random() * 0.4
+        });
+      }
+      if (this.weather) {
+        for (let i = this.weather.length - 1; i >= 0; i--) {
+          const w = this.weather[i];
+          w.x += w.vx;
+          w.y += w.vy * dt;
+          if (w.y > (LOGICAL_HEIGHT || 640)) this.weather.splice(i, 1);
+        }
+      }
+    }
+
+    drawWeather(ctx) {
+      if (!this.weather || this.weather.length === 0) return;
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      for (let w of this.weather) {
+        ctx.globalAlpha = w.alpha;
+        ctx.fillRect(w.x, w.y, w.size, w.size * 3);
+      }
+      ctx.restore();
+    }
   }
 
   let activeGame = null;
@@ -10220,50 +10560,7 @@
       };
       btnClose.addEventListener('click', closeGame);
     }
-
-    updateWeather(dt) {
-      this.weatherTimer += dt;
-      if (this.weatherTimer >= this.weatherDuration) {
-        this.weatherTimer = 0;
-        const states = ['clear', 'storm', 'rain'];
-        const currentIdx = states.indexOf(this.weatherState);
-        this.weatherState = states[(currentIdx + 1) % states.length];
-      }
-      
-      switch(this.weatherState) {
-        case 'storm': this.weatherMultiplier = 1.3; break;
-        case 'rain': this.weatherMultiplier = 0.8; break;
-        default: this.weatherMultiplier = 1.0; break;
-      }
-
-      if (Math.random() < 0.2) {
-        this.weather.push({
-          x: Math.random() * LOGICAL_WIDTH,
-          y: -10,
-          vx: Math.random() * 2 - 1,
-          vy: 200 + Math.random() * 100,
-          size: Math.random() * 2 + 1,
-          alpha: 0.3 + Math.random() * 0.4
-        });
-      }
-      for (let i = this.weather.length - 1; i >= 0; i--) {
-        const w = this.weather[i];
-        w.x += w.vx;
-        w.y += w.vy * dt;
-        if (w.y > LOGICAL_HEIGHT) this.weather.splice(i, 1);
-      }
-    }
-
-    drawWeather(ctx) {
-      ctx.save();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      for (let w of this.weather) {
-        ctx.globalAlpha = w.alpha;
-        ctx.fillRect(w.x, w.y, w.size, w.size * 3);
-      }
-      ctx.restore();
-    }
-  } // Closes GameState
+  }
 
   if (document.readyState === 'loading') {
     window.addEventListener('DOMContentLoaded', () => {

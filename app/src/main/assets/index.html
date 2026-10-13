@@ -40,17 +40,10 @@
                 <span id="menu-player-name" class="player-name">Your Player</span>
               </div>
             </div>
-            <!-- Side-by-side circular buttons below player profile -->
+            <!-- Single circular settings button below player profile -->
             <div class="top-circular-buttons">
-              <button id="btn-achievements" class="btn-circle-top" title="Achievements">
-                <span class="btn-icon">🏅</span>
-                <span id="achievements-badge" class="badge hidden">!</span>
-              </button>
               <button id="btn-settings" class="btn-circle-top" title="Settings">
                 <span class="btn-icon">⚙️</span>
-              </button>
-              <button id="btn-bestiary" class="btn-circle-top" title="Bestiary">
-                <span class="btn-icon">📖</span>
               </button>
             </div>
           </div>
@@ -65,9 +58,6 @@
               <button id="btn-daily-reward" class="btn-circle-top btn-circle-gift" title="Daily Gift">
                 <span class="btn-icon">🎁</span>
                 <span id="daily-badge" class="badge hidden">!</span>
-              </button>
-              <button id="btn-research" class="btn-circle-top" title="Research Tree">
-                <span class="btn-icon">🔬</span>
               </button>
             </div>
           </div>
@@ -93,6 +83,10 @@
               <span class="btn-icon">📜</span>
               <span class="btn-text">TASK</span>
               <span id="task-badge" class="badge hidden">!</span>
+            </button>
+            <button id="btn-weapons" class="btn-footer">
+              <span class="btn-icon">⚔️</span>
+              <span class="btn-text">WEAPONS</span>
             </button>
             <button id="btn-start" class="btn-footer-start">
               <span class="btn-start-icon">⚔️</span>
@@ -757,6 +751,50 @@
         <div class="modal-content scrollable">
           <div id="bestiary-list" class="items-list">
             <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    <!-- WEAPONS MODAL (TWO SEPARATE FRAMES: MY WEAPONS & WEAPON SHOP) -->
+    <div id="weapons-modal" class="modal-overlay hidden">
+      <div class="modal-card modal-weapons-card">
+        <div class="modal-header">
+          <div class="weapons-header-left">
+            <h2>⚔️ WEAPON ARSENAL</h2>
+            <div class="weapons-gold-badge">
+              <span class="gold-icon">💰</span>
+              <span id="weapons-gold-val" class="gold-val">Rs 0</span>
+            </div>
+          </div>
+          <button class="modal-close" id="btn-close-weapons" data-close="weapons-modal">✕</button>
+        </div>
+
+        <div class="weapons-modal-frames">
+          <!-- FRAME 1 — MY WEAPONS -->
+          <div class="weapon-frame frame-my-weapons">
+            <div class="frame-headline">
+              <div class="frame-tag">
+                <span class="frame-icon">🎒</span>
+                <span class="frame-title-text">MY WEAPONS</span>
+              </div>
+              <span id="my-weapons-count-badge" class="frame-pill">1 Owned</span>
+            </div>
+            <div class="frame-scroll-area" id="my-weapons-list">
+              <!-- Dynamically populated owned weapons -->
+            </div>
+          </div>
+
+          <!-- FRAME 2 — WEAPON SHOP -->
+          <div class="weapon-frame frame-weapon-shop">
+            <div class="frame-headline">
+              <div class="frame-tag">
+                <span class="frame-icon">🏪</span>
+                <span class="frame-title-text">WEAPON SHOP</span>
+              </div>
+              <span class="frame-pill">25 Weapons</span>
+            </div>
+            <div class="frame-scroll-area" id="weapon-shop-list">
+              <!-- Dynamically populated 25 purchasable weapons -->
+            </div>
           </div>
         </div>
       </div>

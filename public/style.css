@@ -713,10 +713,12 @@ button,
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
-  max-width: 480px;
+  max-width: 500px;
   margin: 0 auto;
+  padding: 0 4px;
+  box-sizing: border-box;
 }
 
 .btn-footer {
@@ -726,16 +728,16 @@ button,
   align-items: center;
   justify-content: center;
   gap: 2px;
-  min-width: 52px;
-  height: 48px;
-  flex: 1 1 52px;
-  max-width: 72px;
+  min-width: 44px;
+  height: 47px;
+  flex: 1 1 44px;
+  max-width: 68px;
   background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
   border: 1.5px solid var(--border-gold);
   color: #f8fafc;
-  clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
+  clip-path: polygon(5px 0, calc(100% - 5px) 0, 100% 5px, 100% calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px), 0 5px);
   cursor: pointer;
-  padding: 2px 2px;
+  padding: 2px 1px;
   transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, border-color 0.15s ease;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
   box-sizing: border-box;
@@ -829,6 +831,67 @@ button,
 
 .btn-footer-exit:hover {
   background: linear-gradient(180deg, #f87171 0%, #b91c1c 100%);
+}
+
+@media (max-width: 440px) {
+  .footer-buttons-row {
+    gap: 3px;
+    padding: 0 2px;
+  }
+  .btn-footer {
+    min-width: 38px;
+    height: 46px;
+    flex: 1 1 38px;
+    padding: 2px 1px;
+  }
+  .btn-footer .btn-icon {
+    font-size: 13.5px;
+  }
+  .btn-footer .btn-text {
+    font-size: 7.5px;
+    letter-spacing: 0;
+  }
+  .btn-footer-start {
+    min-width: 66px;
+    height: 58px;
+    flex: 1 1 66px;
+  }
+  .btn-footer-start .btn-start-icon {
+    font-size: 18px;
+  }
+  .btn-footer-start .btn-start-text {
+    font-size: 9.5px;
+  }
+}
+
+@media (max-width: 350px) {
+  .footer-buttons-row {
+    gap: 2px;
+    padding: 0 1px;
+  }
+  .btn-footer {
+    min-width: 34px;
+    height: 43px;
+    flex: 1 1 34px;
+    padding: 1px 0;
+  }
+  .btn-footer .btn-icon {
+    font-size: 12px;
+  }
+  .btn-footer .btn-text {
+    font-size: 6.5px;
+  }
+  .btn-footer-start {
+    min-width: 56px;
+    height: 52px;
+    flex: 1 1 56px;
+  }
+  .btn-footer-start .btn-start-icon {
+    font-size: 16px;
+  }
+  .btn-footer-start .btn-start-text {
+    font-size: 8.5px;
+  }
 }
 
 .menu-actions {
@@ -3282,6 +3345,380 @@ button, .btn-menu, .btn-primary, .btn-secondary, .btn-danger,
   font-size: 13px;
   font-weight: 900;
   color: #f8fafc;
+}
+
+/* ====================================================
+   WEAPON ARSENAL & WEAPON SHOP STYLES
+   ==================================================== */
+
+.modal-weapons-card {
+  width: 95vw;
+  max-width: 760px;
+  max-height: 90vh;
+  background: #0f172a;
+  border: 1.5px solid var(--border-gold);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.95);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.weapons-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.weapons-header-left h2 {
+  font-size: 17px;
+  font-weight: 900;
+  color: #f8fafc;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.weapons-gold-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid #f59e0b;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fbbf24;
+}
+
+.weapons-modal-frames {
+  display: flex;
+  flex-direction: row;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Two distinct frames */
+.weapon-frame {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 12px;
+  min-height: 0;
+  box-sizing: border-box;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.frame-my-weapons {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.55) 100%);
+}
+
+.frame-weapon-shop {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.55) 100%);
+}
+
+.frame-headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.frame-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.frame-title-text {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  color: #f8fafc;
+  text-transform: uppercase;
+}
+
+.frame-my-weapons .frame-title-text {
+  color: #38bdf8;
+}
+
+.frame-weapon-shop .frame-title-text {
+  color: #fbbf24;
+}
+
+.frame-pill {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+.frame-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+  min-height: 0;
+}
+
+/* Custom scrollbar for frame-scroll-area */
+.frame-scroll-area::-webkit-scrollbar {
+  width: 5px;
+}
+.frame-scroll-area::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 4px;
+}
+.frame-scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.4);
+  border-radius: 4px;
+}
+
+/* Weapon Cards */
+.weapon-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+
+.weapon-card:hover {
+  background: rgba(51, 65, 85, 0.8);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.weapon-card.equipped-card {
+  border: 1.5px solid #fbbf24 !important;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(30, 41, 59, 0.9) 100%) !important;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.35);
+}
+
+.weapon-card-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.weapon-icon-box {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.equipped-card .weapon-icon-box {
+  border-color: #fbbf24;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.weapon-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.weapon-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.weapon-name {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.weapon-type-pill {
+  font-size: 8.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  letter-spacing: 0.3px;
+}
+
+.weapon-type-pill.legendary {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+}
+
+.weapon-type-pill.fire {
+  background: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.weapon-type-pill.ice {
+  background: rgba(56, 189, 248, 0.25);
+  color: #7dd3fc;
+}
+
+.weapon-type-pill.lightning {
+  background: rgba(234, 179, 8, 0.25);
+  color: #fde047;
+}
+
+.weapon-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.stat-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.stat-special {
+  color: #fef08a;
+  background: rgba(245, 158, 11, 0.12);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 9.5px;
+}
+
+.weapon-action-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.weapon-price-tag {
+  font-size: 11px;
+  font-weight: 800;
+  color: #fbbf24;
+  white-space: nowrap;
+}
+
+.btn-equip-action {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+  border: 1px solid #7dd3fc;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.btn-equip-action:active {
+  transform: scale(0.94);
+}
+
+.badge-equipped-tag {
+  background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  color: #020617;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.btn-shop-buy {
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+  border: 1px solid #86efac;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.btn-shop-buy:active {
+  transform: scale(0.94);
+}
+
+.btn-shop-buy.btn-disabled {
+  background: #334155 !important;
+  border-color: #475569 !important;
+  color: #64748b !important;
+  cursor: not-allowed;
+  box-shadow: none !important;
+}
+
+.badge-owned-tag {
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* Mobile responsive layout */
+@media (max-width: 680px) {
+  .weapons-modal-frames {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .frame-scroll-area {
+    max-height: 27vh;
+  }
+  .modal-weapons-card {
+    padding: 12px;
+    max-height: 92vh;
+  }
+  .weapon-name {
+    max-width: 110px;
+  }
 }
 
 .hidden {
