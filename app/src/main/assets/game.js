@@ -7000,7 +7000,7 @@
       document.getElementById('main-menu')?.classList.remove('active');
       document.getElementById('main-menu').style.display = 'none';
       this.showScreen('gameplay-screen');
-      this.resizeCanvas();
+      requestAnimationFrame(() => this.resizeCanvas());
       this.showWaveBanner(`WAVE 1 / ${diffCfg.maxWaves}`, 'PREPARE DEFENSES!');
       this.sound.startGameplayMusic(this.currentMapIndex, false);
     }
